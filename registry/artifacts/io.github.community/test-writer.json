@@ -1,0 +1,32 @@
+{
+  "name": "io.github.community/test-writer",
+  "displayName": "Test Writer Skill",
+  "type": "skill",
+  "version": "2.0.1",
+  "description": "Write comprehensive unit, integration, and e2e tests. Auto-detects the testing framework (Jest, Vitest, pytest, Go test, RSpec) and generates idiomatic tests with high coverage.",
+  "author": {
+    "name": "agent-registry community",
+    "url": "https://github.com/rohithilluri/agent-registry"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/rohithilluri/agent-registry",
+  "keywords": ["testing", "unit-tests", "jest", "pytest", "vitest", "coverage", "tdd"],
+  "category": "testing",
+  "agentCompat": ["claude-code", "codex"],
+  "trust": "verified",
+  "source": {
+    "type": "git",
+    "repo": "rohithilluri/agent-registry",
+    "version": "main"
+  },
+  "permissions": ["read_files", "write_files"],
+  "hasScripts": false,
+  "hasMCP": false,
+  "hasHooks": false,
+  "install": {
+    "any": {
+      "skillSource": "https://github.com/rohithilluri/agent-registry/archive/refs/heads/main.tar.gz",
+      "skillPath": "skills/test-writer"
+    }
+  }
+}

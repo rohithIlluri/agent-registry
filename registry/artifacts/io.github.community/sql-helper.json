@@ -1,0 +1,32 @@
+{
+  "name": "io.github.community/sql-helper",
+  "displayName": "SQL Helper Skill",
+  "type": "skill",
+  "version": "1.0.0",
+  "description": "Write, optimize, and explain SQL queries. Supports PostgreSQL, MySQL, SQLite, and BigQuery dialects. Includes EXPLAIN analysis, index recommendations, and safe migration generation.",
+  "author": {
+    "name": "agent-registry community",
+    "url": "https://github.com/rohithilluri/agent-registry"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/rohithilluri/agent-registry",
+  "keywords": ["sql", "postgres", "mysql", "query", "optimization", "explain", "bigquery"],
+  "category": "databases",
+  "agentCompat": ["claude-code", "codex"],
+  "trust": "community",
+  "source": {
+    "type": "git",
+    "repo": "rohithilluri/agent-registry",
+    "version": "main"
+  },
+  "permissions": ["read_files"],
+  "hasScripts": false,
+  "hasMCP": false,
+  "hasHooks": false,
+  "install": {
+    "any": {
+      "skillSource": "https://github.com/rohithilluri/agent-registry/archive/refs/heads/main.tar.gz",
+      "skillPath": "skills/sql-helper"
+    }
+  }
+}

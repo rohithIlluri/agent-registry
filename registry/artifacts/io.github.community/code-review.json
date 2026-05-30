@@ -1,0 +1,32 @@
+{
+  "name": "io.github.community/code-review",
+  "displayName": "Code Review Skill",
+  "type": "skill",
+  "version": "1.2.0",
+  "description": "Systematic code review covering correctness bugs, security vulnerabilities (OWASP Top 10), performance issues, and style. Produces inline comments with severity levels and a summary report.",
+  "author": {
+    "name": "agent-registry community",
+    "url": "https://github.com/rohithilluri/agent-registry"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/rohithilluri/agent-registry",
+  "keywords": ["code-review", "security", "bugs", "quality", "analysis", "owasp"],
+  "category": "security",
+  "agentCompat": ["claude-code", "codex"],
+  "trust": "verified",
+  "source": {
+    "type": "git",
+    "repo": "rohithilluri/agent-registry",
+    "version": "main"
+  },
+  "permissions": ["read_files"],
+  "hasScripts": false,
+  "hasMCP": false,
+  "hasHooks": false,
+  "install": {
+    "any": {
+      "skillSource": "https://github.com/rohithilluri/agent-registry/archive/refs/heads/main.tar.gz",
+      "skillPath": "skills/code-review"
+    }
+  }
+}

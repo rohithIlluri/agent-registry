@@ -1,0 +1,156 @@
+{
+  "version": "1",
+  "generated": "2026-05-30T00:00:00Z",
+  "artifacts": [
+    {
+      "name": "io.github.modelcontextprotocol/filesystem",
+      "displayName": "MCP Filesystem Server",
+      "type": "mcp-server",
+      "version": "0.6.2",
+      "description": "Give Claude and Codex access to the local filesystem with configurable root directories.",
+      "category": "devops",
+      "keywords": ["filesystem", "files", "read", "write", "directories"],
+      "agentCompat": ["claude-code", "codex"],
+      "trust": "curated",
+      "hasMCP": true
+    },
+    {
+      "name": "io.github.modelcontextprotocol/github",
+      "displayName": "MCP GitHub Server",
+      "type": "mcp-server",
+      "version": "0.7.0",
+      "description": "Full GitHub API via MCP: issues, PRs, commits, repos, search.",
+      "category": "devops",
+      "keywords": ["github", "git", "issues", "pull-requests", "repos"],
+      "agentCompat": ["claude-code", "codex"],
+      "trust": "curated",
+      "hasMCP": true
+    },
+    {
+      "name": "io.github.modelcontextprotocol/memory",
+      "displayName": "MCP Memory Server",
+      "type": "mcp-server",
+      "version": "0.6.3",
+      "description": "Persistent key-value memory store for agents, backed by a local JSON file.",
+      "category": "productivity",
+      "keywords": ["memory", "persistence", "storage", "knowledge-graph"],
+      "agentCompat": ["claude-code", "codex"],
+      "trust": "curated",
+      "hasMCP": true
+    },
+    {
+      "name": "io.github.modelcontextprotocol/postgres",
+      "displayName": "MCP PostgreSQL Server",
+      "type": "mcp-server",
+      "version": "0.6.2",
+      "description": "Read-only PostgreSQL MCP server — query schemas and run SELECT statements.",
+      "category": "databases",
+      "keywords": ["postgres", "postgresql", "sql", "database"],
+      "agentCompat": ["claude-code", "codex"],
+      "trust": "curated",
+      "hasMCP": true
+    },
+    {
+      "name": "io.github.modelcontextprotocol/puppeteer",
+      "displayName": "MCP Puppeteer Server",
+      "type": "mcp-server",
+      "version": "0.6.2",
+      "description": "Browser automation via Puppeteer: navigate, screenshot, click, fill forms.",
+      "category": "web",
+      "keywords": ["browser", "puppeteer", "automation", "screenshot", "scraping"],
+      "agentCompat": ["claude-code", "codex"],
+      "trust": "curated",
+      "hasMCP": true
+    },
+    {
+      "name": "io.github.modelcontextprotocol/slack",
+      "displayName": "MCP Slack Server",
+      "type": "mcp-server",
+      "version": "0.6.2",
+      "description": "Slack integration: read channels, send messages, search conversations.",
+      "category": "productivity",
+      "keywords": ["slack", "messaging", "chat", "notifications"],
+      "agentCompat": ["claude-code", "codex"],
+      "trust": "curated",
+      "hasMCP": true
+    },
+    {
+      "name": "io.github.community/code-review",
+      "displayName": "Code Review Skill",
+      "type": "skill",
+      "version": "1.2.0",
+      "description": "Systematic code review: correctness, security, style, and performance analysis with inline comments.",
+      "category": "security",
+      "keywords": ["code-review", "security", "bugs", "quality", "analysis"],
+      "agentCompat": ["claude-code", "codex"],
+      "trust": "verified"
+    },
+    {
+      "name": "io.github.community/git-workflow",
+      "displayName": "Git Workflow Skill",
+      "type": "skill",
+      "version": "1.0.3",
+      "description": "Opinionated Git workflow: conventional commits, branch naming, PR descriptions, changelog generation.",
+      "category": "devops",
+      "keywords": ["git", "commits", "branching", "changelog", "pr", "conventional-commits"],
+      "agentCompat": ["claude-code", "codex"],
+      "trust": "verified"
+    },
+    {
+      "name": "io.github.community/docker-ops",
+      "displayName": "Docker Operations Skill",
+      "type": "skill",
+      "version": "1.1.0",
+      "description": "Docker and Docker Compose operations: build, run, inspect logs, manage containers and images.",
+      "category": "devops",
+      "keywords": ["docker", "containers", "compose", "devops", "kubernetes"],
+      "agentCompat": ["claude-code", "codex"],
+      "trust": "community",
+      "hasScripts": true
+    },
+    {
+      "name": "io.github.community/test-writer",
+      "displayName": "Test Writer Skill",
+      "type": "skill",
+      "version": "2.0.1",
+      "description": "Write comprehensive unit, integration, and e2e tests. Detects framework and generates idiomatic tests.",
+      "category": "testing",
+      "keywords": ["testing", "unit-tests", "jest", "pytest", "vitest", "coverage"],
+      "agentCompat": ["claude-code", "codex"],
+      "trust": "verified"
+    },
+    {
+      "name": "io.github.community/sql-helper",
+      "displayName": "SQL Helper Skill",
+      "type": "skill",
+      "version": "1.0.0",
+      "description": "Write, optimize, and explain SQL queries. Supports PostgreSQL, MySQL, SQLite, and BigQuery dialects.",
+      "category": "databases",
+      "keywords": ["sql", "postgres", "mysql", "query", "optimization", "explain"],
+      "agentCompat": ["claude-code", "codex"],
+      "trust": "community"
+    },
+    {
+      "name": "io.github.community/debug-slash",
+      "displayName": "/debug Slash Command",
+      "type": "slash-command",
+      "version": "1.0.0",
+      "description": "Slash command: /debug — analyze errors, tracebacks, and logs with structured root-cause analysis.",
+      "category": "productivity",
+      "keywords": ["debug", "errors", "tracebacks", "logs", "root-cause"],
+      "agentCompat": ["claude-code"],
+      "trust": "community"
+    },
+    {
+      "name": "io.github.community/security-review-slash",
+      "displayName": "/security-review Slash Command",
+      "type": "slash-command",
+      "version": "1.0.0",
+      "description": "Slash command: /security-review — OWASP Top 10 + SANS CWE security audit of changed code.",
+      "category": "security",
+      "keywords": ["security", "owasp", "audit", "vulnerabilities", "cwe"],
+      "agentCompat": ["claude-code"],
+      "trust": "verified"
+    }
+  ]
+}

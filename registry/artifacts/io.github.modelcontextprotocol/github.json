@@ -1,0 +1,38 @@
+{
+  "name": "io.github.modelcontextprotocol/github",
+  "displayName": "MCP GitHub Server",
+  "type": "mcp-server",
+  "version": "0.7.0",
+  "description": "Full GitHub API via MCP: manage issues, pull requests, commits, repositories, branches, and search across GitHub. Requires a GitHub personal access token.",
+  "author": {
+    "name": "Anthropic / MCP Team",
+    "url": "https://github.com/modelcontextprotocol"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/src/github",
+  "repository": "https://github.com/modelcontextprotocol/servers",
+  "keywords": ["github", "git", "issues", "pull-requests", "repos", "ci"],
+  "category": "devops",
+  "agentCompat": ["claude-code", "codex"],
+  "trust": "curated",
+  "source": {
+    "type": "npm",
+    "package": "@modelcontextprotocol/server-github",
+    "version": "0.7.0"
+  },
+  "permissions": ["github_read", "github_write"],
+  "hasScripts": false,
+  "hasMCP": true,
+  "hasHooks": false,
+  "install": {
+    "any": {
+      "mcpServer": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-github@0.7.0"],
+        "env": {
+          "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+        }
+      }
+    }
+  }
+}

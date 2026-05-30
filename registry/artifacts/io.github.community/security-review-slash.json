@@ -1,0 +1,31 @@
+{
+  "name": "io.github.community/security-review-slash",
+  "displayName": "/security-review Slash Command",
+  "type": "slash-command",
+  "version": "1.0.0",
+  "description": "Slash command /security-review: OWASP Top 10 + SANS CWE security audit of changed code. Flags injection, XSS, auth, secrets, and supply-chain risks.",
+  "author": {
+    "name": "agent-registry community",
+    "url": "https://github.com/rohithilluri/agent-registry"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/rohithilluri/agent-registry",
+  "keywords": ["security", "owasp", "audit", "vulnerabilities", "cwe", "injection", "xss"],
+  "category": "security",
+  "agentCompat": ["claude-code"],
+  "trust": "verified",
+  "source": {
+    "type": "git",
+    "repo": "rohithilluri/agent-registry",
+    "version": "main"
+  },
+  "permissions": ["read_files"],
+  "hasScripts": false,
+  "hasMCP": false,
+  "hasHooks": false,
+  "install": {
+    "claude-code": {
+      "commandBody": "---\ndescription: OWASP Top 10 + SANS CWE security audit of the pending diff or specified files.\n---\n\nPerform a security review of the following code/diff:\n\n$ARGUMENTS\n\nAudit against:\n- **OWASP Top 10** (A01 Broken Access Control through A10 SSRF)\n- **SANS CWE Top 25** (injection, path traversal, memory safety, etc.)\n- **Secrets / credentials** hardcoded or logged\n- **Dependency risks** (unpinned versions, known CVEs)\n- **Supply chain** (eval, dynamic require, shell injection)\n\nFormat each finding as:\n```\n[SEVERITY] CWE-XXX — Short title\nFile: path/to/file.ext:line\nIssue: what's wrong\nFix: specific remediation\n```\n\nSeverities: CRITICAL / HIGH / MEDIUM / LOW / INFO\nEnd with a summary table.\n"
+    }
+  }
+}

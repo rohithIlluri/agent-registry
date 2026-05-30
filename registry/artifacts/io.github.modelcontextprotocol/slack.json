@@ -1,0 +1,39 @@
+{
+  "name": "io.github.modelcontextprotocol/slack",
+  "displayName": "MCP Slack Server",
+  "type": "mcp-server",
+  "version": "0.6.2",
+  "description": "Slack integration: list channels, read messages, send messages, search conversations, and manage workspace content.",
+  "author": {
+    "name": "Anthropic / MCP Team",
+    "url": "https://github.com/modelcontextprotocol"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/src/slack",
+  "repository": "https://github.com/modelcontextprotocol/servers",
+  "keywords": ["slack", "messaging", "chat", "notifications", "workspace"],
+  "category": "productivity",
+  "agentCompat": ["claude-code", "codex"],
+  "trust": "curated",
+  "source": {
+    "type": "npm",
+    "package": "@modelcontextprotocol/server-slack",
+    "version": "0.6.2"
+  },
+  "permissions": ["slack_read", "slack_write"],
+  "hasScripts": false,
+  "hasMCP": true,
+  "hasHooks": false,
+  "install": {
+    "any": {
+      "mcpServer": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-slack@0.6.2"],
+        "env": {
+          "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}",
+          "SLACK_TEAM_ID": "${SLACK_TEAM_ID}"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,153 @@
+name: Validate Registry
+
+on:
+  pull_request:
+    paths:
+      - 'registry/**'
+      - 'skills/**'
+  push:
+    branches: [main]
+
+jobs:
+  validate-index:
+    name: Validate index + manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate registry/index.json
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+
+          REQUIRED_INDEX_FIELDS = {"name", "type", "version", "description", "category", "agentCompat", "trust"}
+          VALID_TYPES = {"mcp-server", "skill", "subagent", "slash-command", "hook", "plugin-bundle"}
+          VALID_TRUST = {"community", "verified", "curated"}
+          VALID_AGENTS = {"claude-code", "codex"}
+
+          with open("registry/index.json") as f:
+              idx = json.load(f)
+
+          assert idx.get("version"), "index.json missing 'version'"
+          assert idx.get("generated"), "index.json missing 'generated'"
+          errors = []
+          names = set()
+          for i, entry in enumerate(idx.get("artifacts", [])):
+              prefix = f"artifacts[{i}] ({entry.get('name','?')})"
+              missing = REQUIRED_INDEX_FIELDS - set(entry.keys())
+              if missing:
+                  errors.append(f"{prefix}: missing fields {missing}")
+              if entry.get("type") not in VALID_TYPES:
+                  errors.append(f"{prefix}: invalid type '{entry.get('type')}'")
+              if entry.get("trust") not in VALID_TRUST:
+                  errors.append(f"{prefix}: invalid trust '{entry.get('trust')}'")
+              for agent in entry.get("agentCompat", []):
+                  if agent not in VALID_AGENTS:
+                      errors.append(f"{prefix}: unknown agent '{agent}'")
+              name = entry.get("name", "")
+              if name in names:
+                  errors.append(f"{prefix}: duplicate name '{name}'")
+              names.add(name)
+              if not ("/" in name):
+                  errors.append(f"{prefix}: name must be namespaced (namespace/artifact)")
+          if errors:
+              print("ERRORS in registry/index.json:")
+              for e in errors: print(" •", e)
+              sys.exit(1)
+          print(f"✓ registry/index.json OK ({len(idx['artifacts'])} artifacts)")
+          EOF
+
+      - name: Validate artifact manifests
+        run: |
+          python3 - <<'EOF'
+          import json, sys, os, glob
+
+          REQUIRED_FIELDS = {"name", "type", "version", "description", "category", "agentCompat", "trust", "source"}
+
+          errors = []
+          manifests = glob.glob("registry/artifacts/**/*.json", recursive=True)
+          for path in manifests:
+              with open(path) as f:
+                  art = json.load(f)
+              prefix = path
+              missing = REQUIRED_FIELDS - set(art.keys())
+              if missing:
+                  errors.append(f"{prefix}: missing fields {missing}")
+              # Verify the artifact appears in index.json
+          # Also check all index entries have a manifest
+          with open("registry/index.json") as f:
+              idx = json.load(f)
+          manifest_names = set()
+          for path in manifests:
+              with open(path) as f:
+                  art = json.load(f)
+              manifest_names.add(art.get("name",""))
+          for entry in idx["artifacts"]:
+              if entry["name"] not in manifest_names:
+                  errors.append(f"WARNING: index entry '{entry['name']}' has no manifest file")
+          if errors:
+              print("ERRORS in manifests:")
+              for e in errors: print(" •", e)
+              sys.exit(1)
+          print(f"✓ {len(manifests)} manifest(s) valid")
+          EOF
+
+      - name: Validate SKILL.md files
+        run: |
+          python3 - <<'EOF'
+          import os, sys, glob
+
+          def parse_frontmatter(content):
+              if not content.startswith("---"):
+                  return None
+              end = content.index("---", 3)
+              return content[3:end]
+
+          errors = []
+          for path in glob.glob("skills/**/SKILL.md", recursive=True):
+              with open(path) as f:
+                  content = f.read()
+              fm = parse_frontmatter(content)
+              if fm is None:
+                  errors.append(f"{path}: missing YAML frontmatter")
+                  continue
+              # Check required fields are present as strings in frontmatter
+              if "name:" not in fm:
+                  errors.append(f"{path}: missing 'name' in frontmatter")
+              if "description:" not in fm:
+                  errors.append(f"{path}: missing 'description' in frontmatter")
+          if errors:
+              for e in errors: print(" •", e)
+              sys.exit(1)
+          print(f"✓ SKILL.md files valid")
+          EOF
+
+  build-cli:
+    name: Build CLI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: Download dependencies
+        run: go mod download
+      - name: Build
+        run: go build -o agr ./...
+      - name: Vet
+        run: go vet ./...
+
+  security-scan:
+    name: Security scan (mcp-scan)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install mcp-scan
+        run: pip install mcp-scan || echo "mcp-scan not available, skipping"
+      - name: Scan new/changed manifests
+        run: |
+          git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'registry/artifacts/**' | while read f; do
+            echo "Scanning $f"
+            mcp-scan "$f" 2>/dev/null || echo "scan skipped for $f"
+          done

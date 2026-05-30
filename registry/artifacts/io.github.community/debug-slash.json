@@ -1,0 +1,31 @@
+{
+  "name": "io.github.community/debug-slash",
+  "displayName": "/debug Slash Command",
+  "type": "slash-command",
+  "version": "1.0.0",
+  "description": "Slash command /debug: paste an error, traceback, or log and get structured root-cause analysis with a fix plan. Works with any language or runtime.",
+  "author": {
+    "name": "agent-registry community",
+    "url": "https://github.com/rohithilluri/agent-registry"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/rohithilluri/agent-registry",
+  "keywords": ["debug", "errors", "tracebacks", "logs", "root-cause"],
+  "category": "productivity",
+  "agentCompat": ["claude-code"],
+  "trust": "community",
+  "source": {
+    "type": "git",
+    "repo": "rohithilluri/agent-registry",
+    "version": "main"
+  },
+  "permissions": ["read_files"],
+  "hasScripts": false,
+  "hasMCP": false,
+  "hasHooks": false,
+  "install": {
+    "claude-code": {
+      "commandBody": "---\ndescription: Analyze an error, traceback, or log and produce a root-cause analysis with fix plan.\n---\n\nAnalyze the following error or log output:\n\n$ARGUMENTS\n\nProvide:\n1. **Root cause** — what exactly went wrong and why\n2. **Context** — what code path led here (if visible)\n3. **Fix** — specific steps to resolve it\n4. **Prevention** — how to avoid this class of error in future\n\nBe concise and actionable.\n"
+    }
+  }
+}

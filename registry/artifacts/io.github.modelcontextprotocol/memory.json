@@ -1,0 +1,36 @@
+{
+  "name": "io.github.modelcontextprotocol/memory",
+  "displayName": "MCP Memory Server",
+  "type": "mcp-server",
+  "version": "0.6.3",
+  "description": "Persistent key-value and knowledge-graph memory for agents. Stores facts, relationships, and observations in a local JSON file that persists across sessions.",
+  "author": {
+    "name": "Anthropic / MCP Team",
+    "url": "https://github.com/modelcontextprotocol"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/src/memory",
+  "repository": "https://github.com/modelcontextprotocol/servers",
+  "keywords": ["memory", "persistence", "storage", "knowledge-graph", "facts"],
+  "category": "productivity",
+  "agentCompat": ["claude-code", "codex"],
+  "trust": "curated",
+  "source": {
+    "type": "npm",
+    "package": "@modelcontextprotocol/server-memory",
+    "version": "0.6.3"
+  },
+  "permissions": ["read_files", "write_files"],
+  "hasScripts": false,
+  "hasMCP": true,
+  "hasHooks": false,
+  "install": {
+    "any": {
+      "mcpServer": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-memory@0.6.3"],
+        "env": {}
+      }
+    }
+  }
+}

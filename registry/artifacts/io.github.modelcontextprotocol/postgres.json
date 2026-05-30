@@ -1,0 +1,36 @@
+{
+  "name": "io.github.modelcontextprotocol/postgres",
+  "displayName": "MCP PostgreSQL Server",
+  "type": "mcp-server",
+  "version": "0.6.2",
+  "description": "Read-only PostgreSQL MCP server — query schemas, list tables, and run SELECT statements. Requires a DATABASE_URL connection string.",
+  "author": {
+    "name": "Anthropic / MCP Team",
+    "url": "https://github.com/modelcontextprotocol"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/src/postgres",
+  "repository": "https://github.com/modelcontextprotocol/servers",
+  "keywords": ["postgres", "postgresql", "sql", "database", "query"],
+  "category": "databases",
+  "agentCompat": ["claude-code", "codex"],
+  "trust": "curated",
+  "source": {
+    "type": "npm",
+    "package": "@modelcontextprotocol/server-postgres",
+    "version": "0.6.2"
+  },
+  "permissions": ["database_read"],
+  "hasScripts": false,
+  "hasMCP": true,
+  "hasHooks": false,
+  "install": {
+    "any": {
+      "mcpServer": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-postgres@0.6.2", "${DATABASE_URL}"],
+        "env": {}
+      }
+    }
+  }
+}

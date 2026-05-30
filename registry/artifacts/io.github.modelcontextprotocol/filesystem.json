@@ -1,0 +1,43 @@
+{
+  "name": "io.github.modelcontextprotocol/filesystem",
+  "displayName": "MCP Filesystem Server",
+  "type": "mcp-server",
+  "version": "0.6.2",
+  "description": "Give Claude and Codex access to the local filesystem with configurable root directories. Supports reading, writing, listing, searching, and moving files within allowed paths.",
+  "author": {
+    "name": "Anthropic / MCP Team",
+    "url": "https://github.com/modelcontextprotocol"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem",
+  "repository": "https://github.com/modelcontextprotocol/servers",
+  "keywords": ["filesystem", "files", "read", "write", "directories", "search"],
+  "category": "devops",
+  "agentCompat": ["claude-code", "codex"],
+  "trust": "curated",
+  "source": {
+    "type": "npm",
+    "package": "@modelcontextprotocol/server-filesystem",
+    "version": "0.6.2"
+  },
+  "permissions": ["read_files", "write_files", "list_directories"],
+  "hasScripts": false,
+  "hasMCP": true,
+  "hasHooks": false,
+  "install": {
+    "claude-code": {
+      "mcpServer": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem@0.6.2", "${ALLOWED_DIRECTORY}"],
+        "env": {}
+      }
+    },
+    "codex": {
+      "mcpServer": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem@0.6.2", "${ALLOWED_DIRECTORY}"],
+        "env": {}
+      }
+    }
+  }
+}

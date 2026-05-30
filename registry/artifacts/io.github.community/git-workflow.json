@@ -1,0 +1,32 @@
+{
+  "name": "io.github.community/git-workflow",
+  "displayName": "Git Workflow Skill",
+  "type": "skill",
+  "version": "1.0.3",
+  "description": "Opinionated Git workflow assistant: enforces conventional commits, branch naming conventions, generates PR descriptions with test plans, and produces changelog entries.",
+  "author": {
+    "name": "agent-registry community",
+    "url": "https://github.com/rohithilluri/agent-registry"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/rohithilluri/agent-registry",
+  "keywords": ["git", "commits", "branching", "changelog", "pr", "conventional-commits", "semver"],
+  "category": "devops",
+  "agentCompat": ["claude-code", "codex"],
+  "trust": "verified",
+  "source": {
+    "type": "git",
+    "repo": "rohithilluri/agent-registry",
+    "version": "main"
+  },
+  "permissions": ["read_files", "bash_git"],
+  "hasScripts": false,
+  "hasMCP": false,
+  "hasHooks": false,
+  "install": {
+    "any": {
+      "skillSource": "https://github.com/rohithilluri/agent-registry/archive/refs/heads/main.tar.gz",
+      "skillPath": "skills/git-workflow"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "io.github.modelcontextprotocol/puppeteer",
+  "displayName": "MCP Puppeteer Server",
+  "type": "mcp-server",
+  "version": "0.6.2",
+  "description": "Browser automation via Puppeteer: navigate pages, take screenshots, click elements, fill forms, and execute JavaScript.",
+  "author": {
+    "name": "Anthropic / MCP Team",
+    "url": "https://github.com/modelcontextprotocol"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer",
+  "repository": "https://github.com/modelcontextprotocol/servers",
+  "keywords": ["browser", "puppeteer", "automation", "screenshot", "scraping", "web"],
+  "category": "web",
+  "agentCompat": ["claude-code", "codex"],
+  "trust": "curated",
+  "source": {
+    "type": "npm",
+    "package": "@modelcontextprotocol/server-puppeteer",
+    "version": "0.6.2"
+  },
+  "permissions": ["network_access", "browser_automation"],
+  "hasScripts": false,
+  "hasMCP": true,
+  "hasHooks": false,
+  "install": {
+    "any": {
+      "mcpServer": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-puppeteer@0.6.2"],
+        "env": {}
+      }
+    }
+  }
+}

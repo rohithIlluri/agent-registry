@@ -1,0 +1,46 @@
+{
+  "name": "agent-registry",
+  "owner": {
+    "name": "Rohith Illuri",
+    "email": "rohith.illuri@gmail.com"
+  },
+  "description": "Free, CLI-first cross-agent registry for MCP servers, SKILL.md skills, slash commands, subagents, and plugin bundles. Works with Claude Code and OpenAI Codex.",
+  "homepage": "https://github.com/rohithilluri/agent-registry",
+  "plugins": [
+    {
+      "name": "code-review",
+      "source": "skills/code-review",
+      "description": "Systematic code review: correctness, security (OWASP Top 10), performance, and style.",
+      "category": "security",
+      "strict": false
+    },
+    {
+      "name": "git-workflow",
+      "source": "skills/git-workflow",
+      "description": "Conventional commits, branch naming, PR descriptions, and changelog generation.",
+      "category": "devops",
+      "strict": false
+    },
+    {
+      "name": "docker-ops",
+      "source": "skills/docker-ops",
+      "description": "Docker and Docker Compose operations: build, run, inspect, manage.",
+      "category": "devops",
+      "strict": false
+    },
+    {
+      "name": "test-writer",
+      "source": "skills/test-writer",
+      "description": "Generate idiomatic tests across Jest, Vitest, pytest, Go test, and more.",
+      "category": "testing",
+      "strict": false
+    },
+    {
+      "name": "sql-helper",
+      "source": "skills/sql-helper",
+      "description": "Write, optimize, and explain SQL queries for PostgreSQL, MySQL, SQLite, and BigQuery.",
+      "category": "databases",
+      "strict": false
+    }
+  ]
+}
