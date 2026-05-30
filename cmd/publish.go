@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/rohithilluri/agent-registry/internal/registry"
 	"github.com/spf13/cobra"
@@ -301,5 +300,3 @@ func sha256Dir(dir string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// Keep the time import used by installer only via a blank reference.
-var _ = time.Now
