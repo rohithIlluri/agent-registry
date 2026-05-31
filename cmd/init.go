@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"github.com/spf13/cobra"
 )
@@ -154,6 +155,21 @@ agr install io.github.YOURUSER/%s
 	return nil
 }
 
+// titleCase uppercases the first letter of each space-separated word.
+// Avoids the deprecated strings.Title.
+func titleCase(s string) string {
+	words := strings.Fields(s)
+	for i, w := range words {
+		if len(w) == 0 {
+			continue
+		}
+		runes := []rune(w)
+		runes[0] = unicode.ToUpper(runes[0])
+		words[i] = string(runes)
+	}
+	return strings.Join(words, " ")
+}
+
 func initPlugin(name string) error {
 	claudeDir := filepath.Join(".", name, ".claude-plugin")
 	codexDir := filepath.Join(".", name, ".codex-plugin")
@@ -174,7 +190,7 @@ func initPlugin(name string) error {
   "skills": "skills/",
   "commands": "commands/"
 }
-`, name, strings.Title(strings.ReplaceAll(name, "-", " "))) //nolint:staticcheck
+`, name, titleCase(strings.ReplaceAll(name, "-", " ")))
 
 	codexPlugin := fmt.Sprintf(`{
   "name": "%s",
@@ -186,7 +202,7 @@ func initPlugin(name string) error {
     "category": "productivity"
   }
 }
-`, name, strings.Title(strings.ReplaceAll(name, "-", " "))) //nolint:staticcheck
+`, name, titleCase(strings.ReplaceAll(name, "-", " ")))
 
 	if err := os.WriteFile(filepath.Join(claudeDir, "plugin.json"), []byte(claudePlugin), 0o644); err != nil {
 		return err

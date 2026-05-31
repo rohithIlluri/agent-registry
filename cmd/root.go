@@ -43,6 +43,8 @@ func init() {
 		newRemoveCmd(),
 		newPublishCmd(),
 		newInitCmd(),
+		newConfigCmd(),
+		newCompletionCmd(),
 		newVersionCmd(),
 	)
 }

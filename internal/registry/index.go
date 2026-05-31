@@ -14,7 +14,12 @@ const (
 	DefaultIndexURL = "https://raw.githubusercontent.com/rohithilluri/agent-registry/main/registry/index.json"
 	CacheTTL        = 24 * time.Hour
 	cacheFile       = "index.json"
+	httpTimeout     = 30 * time.Second
 )
+
+// httpClient is the shared client used for all registry requests.
+// A 30 s timeout prevents the CLI from hanging on a slow or adversarial server.
+var httpClient = &http.Client{Timeout: httpTimeout}
 
 // Client fetches and caches the registry index.
 type Client struct {
@@ -68,7 +73,7 @@ func (c *Client) loadFromFile(path string) (*Index, error) {
 }
 
 func (c *Client) fetchAndCache(dest string) (*Index, error) {
-	resp, err := http.Get(c.IndexURL) //nolint:gosec // URL is user-configurable or default
+	resp, err := httpClient.Get(c.IndexURL) //nolint:gosec // URL is user-configurable or default
 	if err != nil {
 		return nil, fmt.Errorf("fetch index from %s: %w", c.IndexURL, err)
 	}
@@ -153,7 +158,7 @@ func (c *Client) LoadArtifact(name string) (*Artifact, error) {
 	}
 	baseURL := ArtifactBaseURL(c.IndexURL)
 	url := baseURL + name + ".json"
-	resp, err := http.Get(url) //nolint:gosec
+	resp, err := httpClient.Get(url) //nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("fetch artifact %s: %w", name, err)
 	}

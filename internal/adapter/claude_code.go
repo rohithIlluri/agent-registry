@@ -110,8 +110,11 @@ func (a *ClaudeCodeAdapter) writeMCPJSON(name string, srv *registry.MCPServerCon
 		f.MCPServers = make(map[string]registry.MCPServerConfig)
 	}
 	f.MCPServers[shortName(name)] = *srv
-	data, _ := json.MarshalIndent(f, "", "  ")
-	return os.WriteFile(path, data, 0o644)
+	data, err := json.MarshalIndent(f, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal .mcp.json: %w", err)
+	}
+	return writeFileAtomic(path, data, 0o644) // project-level file; 0o644 is appropriate
 }
 
 type claudeSettings struct {
@@ -132,8 +135,11 @@ func (a *ClaudeCodeAdapter) writeSettingsMCP(name string, srv *registry.MCPServe
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	data, _ := json.MarshalIndent(s, "", "  ")
-	return os.WriteFile(path, data, 0o644)
+	data, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal settings: %w", err)
+	}
+	return writeFileAtomic(path, data, 0o600)
 }
 
 func (a *ClaudeCodeAdapter) installCommand(art *registry.Artifact, payload string, scope Scope) error {
@@ -236,8 +242,9 @@ func (a *ClaudeCodeAdapter) Remove(name string, scope Scope) error {
 			_ = json.Unmarshal(data, &s)
 			if _, ok := s.MCPServers[short]; ok {
 				delete(s.MCPServers, short)
-				data, _ := json.MarshalIndent(s, "", "  ")
-				_ = os.WriteFile(path, data, 0o644)
+				if data, err := json.MarshalIndent(s, "", "  "); err == nil {
+					_ = writeFileAtomic(path, data, 0o600)
+				}
 				removed = true
 			}
 		}
@@ -251,8 +258,9 @@ func (a *ClaudeCodeAdapter) Remove(name string, scope Scope) error {
 			_ = json.Unmarshal(data, &f)
 			if _, ok := f.MCPServers[short]; ok {
 				delete(f.MCPServers, short)
-				data, _ := json.MarshalIndent(f, "", "  ")
-				_ = os.WriteFile(path, data, 0o644)
+				if data, err := json.MarshalIndent(f, "", "  "); err == nil {
+					_ = writeFileAtomic(path, data, 0o644)
+				}
 				removed = true
 			}
 		}

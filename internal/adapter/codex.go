@@ -130,7 +130,7 @@ func (a *CodexAdapter) writeMCPToml(name string, srv *registry.MCPServerConfig, 
 	if err := enc.Encode(raw); err != nil {
 		return fmt.Errorf("encode TOML: %w", err)
 	}
-	return os.WriteFile(cfgPath, []byte(sb.String()), 0o600)
+	return writeFileAtomic(cfgPath, []byte(sb.String()), 0o600)
 }
 
 func (a *CodexAdapter) installPrompt(art *registry.Artifact, payload string, scope Scope) error {
@@ -214,8 +214,9 @@ func (a *CodexAdapter) Remove(name string, scope Scope) error {
 				raw["mcp_servers"] = servers
 				var sb strings.Builder
 				enc := toml.NewEncoder(&sb)
-				_ = enc.Encode(raw)
-				_ = os.WriteFile(cfgPath, []byte(sb.String()), 0o600)
+				if err := enc.Encode(raw); err == nil {
+					_ = writeFileAtomic(cfgPath, []byte(sb.String()), 0o600)
+				}
 				removed = true
 			}
 		}

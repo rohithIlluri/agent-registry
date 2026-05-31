@@ -1,0 +1,64 @@
+version: "2"
+
+linters:
+  enable:
+    # Security
+    - gosec          # Go security checks (injection, path traversal, crypto, etc.)
+    - gocritic       # misc code issues including some security patterns
+    - noctx          # HTTP requests must use context (prevents resource leaks)
+    - bodyclose      # HTTP response bodies must be closed
+    # Correctness
+    - errcheck       # all errors must be checked
+    - govet          # built-in vet checks
+    - staticcheck    # broad staticcheck rules
+    - ineffassign    # detect unused assignments
+    - unused         # detect unused code
+    # Style / maintainability
+    - gofmt          # standard formatting
+    - goimports      # import ordering
+    - misspell       # typos in comments/strings
+
+linters-settings:
+  gosec:
+    excludes:
+      # G107 (URL provided to HTTP request as taint): we nolint specific call sites
+      # where the URL is intentionally configurable (registry index, artifact downloads).
+      - G107
+    config:
+      global:
+        # Treat all gosec issues as errors (no severity threshold).
+        severity: medium
+        confidence: medium
+
+  errcheck:
+    check-type-assertions: true
+    check-blank: false
+
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment  # struct padding — not a correctness issue
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - security
+      - performance
+    disabled-checks:
+      - commentedOutCode
+      - paramTypeCombine
+
+issues:
+  # Show all issues; don't cap at 3 per linter.
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+  exclude-rules:
+    # Test files: allow unchecked errors and unused exports.
+    - path: "_test\\.go"
+      linters: [errcheck, gosec, unused]
+
+    # The nolint comments on http.Get calls in index.go and installer.go are intentional:
+    # those URLs are user-configurable defaults, not raw user input.
+    - text: "G107"
+      linters: [gosec]

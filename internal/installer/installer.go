@@ -19,6 +19,9 @@ import (
 	"github.com/rohithilluri/agent-registry/internal/security"
 )
 
+// downloadClient has a generous timeout for artifact payloads (larger files).
+var downloadClient = &http.Client{Timeout: 5 * time.Minute}
+
 // Options controls install behaviour.
 type Options struct {
 	Agents      []string      // target agents; empty = auto-detect
@@ -214,7 +217,7 @@ func fetchPayload(art *registry.Artifact) (string, func(), error) {
 }
 
 func downloadTo(url string) (string, func(), error) {
-	resp, err := http.Get(url) //nolint:gosec
+	resp, err := downloadClient.Get(url) //nolint:gosec
 	if err != nil {
 		return "", nil, err
 	}

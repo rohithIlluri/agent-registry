@@ -1,0 +1,222 @@
+name: Security & Quality
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+permissions:
+  contents: read
+  security-events: write  # for SARIF upload to GitHub Security tab
+
+jobs:
+  # ── 1. Go static analysis (gosec + govulncheck) ──────────────────────────
+  gosec:
+    name: gosec (Go security scanner)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+      - name: Run gosec
+        run: |
+          gosec -fmt sarif -out gosec-results.sarif ./... || true
+          gosec -fmt text ./...
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: gosec-results.sarif
+          category: gosec
+
+  govulncheck:
+    name: govulncheck (known CVEs in deps)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: Run govulncheck
+        run: govulncheck ./...
+
+  # ── 2. Secret scanning ────────────────────────────────────────────────────
+  gitleaks:
+    name: gitleaks (secret detection)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so gitleaks can scan all commits
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── 3. Dependency vulnerability scan ─────────────────────────────────────
+  trivy:
+    name: trivy (container + dep CVEs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run trivy on filesystem
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+          exit-code: '1'
+
+      - name: Upload trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
+
+  # ── 4. Linting (golangci-lint) ────────────────────────────────────────────
+  lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+
+  # ── 5. Uncommitted / unstaged file checks ────────────────────────────────
+  #    Catches secrets, large files, and bad patterns that shouldn't be committed.
+  uncommitted-checks:
+    name: Uncommitted file checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for secrets in changed files (detect-secrets)
+        run: |
+          pip install detect-secrets
+          # Baseline against the merge-base so we only scan new/changed content
+          BASE="${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
+          git diff --name-only "$BASE"..HEAD | while read f; do
+            [ -f "$f" ] || continue
+            detect-secrets scan "$f" | python3 -c "
+          import json, sys
+          r = json.load(sys.stdin)
+          results = r.get('results', {})
+          if results:
+              for path, findings in results.items():
+                  for f in findings:
+                      print(f'SECRET FOUND: {path}:{f[\"line_number\"]} type={f[\"type\"]}')
+              sys.exit(1)
+          "
+          done
+
+      - name: Reject oversized files (>5 MB)
+        run: |
+          BASE="${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
+          git diff --name-only "$BASE"..HEAD | while read f; do
+            [ -f "$f" ] || continue
+            SIZE=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null)
+            if [ "$SIZE" -gt 5242880 ]; then
+              echo "ERROR: $f is $(( SIZE / 1024 ))KB — files >5MB should not be committed"
+              exit 1
+            fi
+          done
+
+      - name: Reject .env / credential files
+        run: |
+          BASE="${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
+          git diff --name-only "$BASE"..HEAD | grep -E '\.(env|pem|key|p12|pfx|jks|keystore|secret)$|^\.env(\..+)?$|credentials\.(json|yaml|yml)$' | while read f; do
+            echo "ERROR: $f looks like a credential file — do not commit secrets"
+            exit 1
+          done || true
+
+      - name: Check registry manifests for suspicious fields
+        run: |
+          python3 - <<'EOF'
+          import json, sys, glob, re
+
+          # Patterns that suggest prompt injection or malicious tool descriptions.
+          SUSPICIOUS = [
+              r'ignore (previous|all) instructions',
+              r'system prompt',
+              r'<\s*script',
+              r'eval\s*\(',
+              r'base64\s*\.\s*decode',
+              r'exec\s*\(',
+          ]
+          patterns = [re.compile(p, re.IGNORECASE) for p in SUSPICIOUS]
+
+          errors = []
+          for path in glob.glob("registry/artifacts/**/*.json", recursive=True):
+              with open(path) as f:
+                  raw = f.read()
+              for pat in patterns:
+                  if pat.search(raw):
+                      errors.append(f"{path}: suspicious pattern: {pat.pattern}")
+
+          if errors:
+              for e in errors:
+                  print("WARN:", e)
+              sys.exit(1)
+          print(f"✓ No suspicious patterns in {len(list(glob.glob('registry/artifacts/**/*.json', recursive=True)))} manifests")
+          EOF
+
+      - name: Verify all index entries have a manifest file
+        run: |
+          python3 - <<'EOF'
+          import json, os, sys
+
+          with open("registry/index.json") as f:
+              idx = json.load(f)
+
+          missing = []
+          for entry in idx["artifacts"]:
+              name = entry["name"]
+              path = f"registry/artifacts/{name}.json"
+              if not os.path.exists(path):
+                  missing.append(f"  {name} → {path}")
+
+          if missing:
+              print("ERROR: index entries missing manifest files:")
+              for m in missing:
+                  print(m)
+              sys.exit(1)
+          print(f"✓ All {len(idx['artifacts'])} index entries have manifest files")
+          EOF
+
+  # ── 6. Tests with race detector ──────────────────────────────────────────
+  test:
+    name: Go tests (race)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go test -race -count=1 -timeout=120s ./...
