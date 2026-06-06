@@ -187,6 +187,120 @@ func TestClaudeCode_Remove_Skill(t *testing.T) {
 	}
 }
 
+func TestClaudeCode_InstallHook(t *testing.T) {
+	home := setHome(t)
+
+	art := &registry.Artifact{
+		Name:    "io.github.test/my-hook",
+		Type:    registry.TypeHook,
+		Version: "1.0.0",
+		Install: registry.InstallConfig{
+			"claude-code": {
+				Hooks: registry.HookDefinition{
+					"PreToolUse": {
+						{
+							Matcher: "Bash",
+							Hooks: []registry.HookCommand{
+								{Type: "command", Command: "echo pre"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	a := adapter.NewClaudeCodeAdapter()
+	if err := a.Install(art, "", adapter.ScopeUser); err != nil {
+		t.Fatalf("Install hook: %v", err)
+	}
+
+	settingsPath := filepath.Join(home, ".claude", "settings.json")
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("expected settings.json: %v", err)
+	}
+	var s map[string]interface{}
+	_ = json.Unmarshal(data, &s)
+	hooks, _ := s["hooks"].(map[string]interface{})
+	if hooks == nil {
+		t.Fatal("hooks missing from settings.json")
+	}
+	preToolUse, _ := hooks["PreToolUse"].([]interface{})
+	if len(preToolUse) == 0 {
+		t.Error("PreToolUse hooks should not be empty")
+	}
+}
+
+func TestClaudeCode_InstallPlugin(t *testing.T) {
+	home := setHome(t)
+
+	pluginPayload := t.TempDir()
+	if err := os.WriteFile(filepath.Join(pluginPayload, "plugin.json"), []byte(`{"name":"test-plugin"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	art := &registry.Artifact{
+		Name:    "io.github.test/my-plugin",
+		Type:    registry.TypePlugin,
+		Version: "1.0.0",
+		Install: registry.InstallConfig{},
+	}
+
+	a := adapter.NewClaudeCodeAdapter()
+	if err := a.Install(art, pluginPayload, adapter.ScopeUser); err != nil {
+		t.Fatalf("Install plugin: %v", err)
+	}
+
+	// Cache dir should exist
+	cacheDir := filepath.Join(home, ".claude", "plugins", "cache", "my-plugin")
+	if _, err := os.Stat(cacheDir); err != nil {
+		t.Errorf("expected plugin cache at %s: %v", cacheDir, err)
+	}
+
+	// Plugin should be in enabledPlugins
+	settingsPath := filepath.Join(home, ".claude", "settings.json")
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("expected settings.json: %v", err)
+	}
+	var s map[string]interface{}
+	_ = json.Unmarshal(data, &s)
+	enabled, _ := s["enabledPlugins"].([]interface{})
+	if len(enabled) == 0 {
+		t.Fatal("enabledPlugins should not be empty")
+	}
+	if enabled[0] != "my-plugin" {
+		t.Errorf("enabledPlugins[0] = %v, want my-plugin", enabled[0])
+	}
+}
+
+func TestClaudeCode_Remove_Plugin(t *testing.T) {
+	home := setHome(t)
+
+	// Seed a plugin
+	cacheDir := filepath.Join(home, ".claude", "plugins", "cache", "my-plugin")
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	settings := map[string]interface{}{
+		"enabledPlugins": []string{"my-plugin"},
+	}
+	data, _ := json.MarshalIndent(settings, "", "  ")
+	_ = os.MkdirAll(filepath.Join(home, ".claude"), 0o755)
+	_ = os.WriteFile(filepath.Join(home, ".claude", "settings.json"), data, 0o600)
+
+	a := adapter.NewClaudeCodeAdapter()
+	if err := a.Remove("io.github.test/my-plugin", adapter.ScopeUser); err != nil {
+		t.Fatalf("Remove: %v", err)
+	}
+
+	// Cache dir should be gone
+	if _, err := os.Stat(cacheDir); !os.IsNotExist(err) {
+		t.Error("expected plugin cache to be removed")
+	}
+}
+
 // --- CodexAdapter ---
 
 func TestCodex_Name(t *testing.T) {

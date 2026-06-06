@@ -44,6 +44,7 @@ func init() {
 		newPublishCmd(),
 		newInitCmd(),
 		newConfigCmd(),
+		newRegistryCmd(),
 		newCompletionCmd(),
 		newVersionCmd(),
 	)

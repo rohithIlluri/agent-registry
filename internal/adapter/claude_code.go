@@ -62,6 +62,10 @@ func (a *ClaudeCodeAdapter) Install(art *registry.Artifact, payload string, scop
 		return a.installCommand(art, payload, scope)
 	case registry.TypeSubagent:
 		return a.installSubagent(art, payload, scope)
+	case registry.TypeHook:
+		return a.installHook(art, scope)
+	case registry.TypePlugin:
+		return a.installPlugin(art, payload, scope)
 	default:
 		return fmt.Errorf("claude-code: installing %q artifacts is not yet supported", art.Type)
 	}
@@ -117,8 +121,15 @@ func (a *ClaudeCodeAdapter) writeMCPJSON(name string, srv *registry.MCPServerCon
 	return writeFileAtomic(path, data, 0o644) // project-level file; 0o644 is appropriate
 }
 
+type claudeHookMatcher struct {
+	Matcher string                     `json:"matcher,omitempty"`
+	Hooks   []registry.HookCommand     `json:"hooks"`
+}
+
 type claudeSettings struct {
-	MCPServers map[string]registry.MCPServerConfig `json:"mcpServers,omitempty"`
+	MCPServers    map[string]registry.MCPServerConfig      `json:"mcpServers,omitempty"`
+	Hooks         map[string][]claudeHookMatcher           `json:"hooks,omitempty"`
+	EnabledPlugins []string                                `json:"enabledPlugins,omitempty"`
 }
 
 func (a *ClaudeCodeAdapter) writeSettingsMCP(name string, srv *registry.MCPServerConfig) error {
@@ -189,25 +200,110 @@ func (a *ClaudeCodeAdapter) installSubagent(art *registry.Artifact, payload stri
 	return os.WriteFile(dest, []byte(body), 0o644)
 }
 
+// installHook merges hook definitions from the artifact into ~/.claude/settings.json.
+func (a *ClaudeCodeAdapter) installHook(art *registry.Artifact, scope Scope) error {
+	cfg, ok := art.Install["claude-code"]
+	if !ok {
+		cfg, ok = art.Install["any"]
+	}
+	if !ok || len(cfg.Hooks) == 0 {
+		return fmt.Errorf("artifact %q has no claude-code hook install config", art.Name)
+	}
+	base, err := a.base(scope)
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(base, "settings.json")
+	var s claudeSettings
+	if data, err := os.ReadFile(path); err == nil {
+		_ = json.Unmarshal(data, &s)
+	}
+	if s.Hooks == nil {
+		s.Hooks = make(map[string][]claudeHookMatcher)
+	}
+	for event, matchers := range cfg.Hooks {
+		for _, m := range matchers {
+			s.Hooks[event] = append(s.Hooks[event], claudeHookMatcher{
+				Matcher: m.Matcher,
+				Hooks:   m.Hooks,
+			})
+		}
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal settings: %w", err)
+	}
+	return writeFileAtomic(path, data, 0o600)
+}
+
+// installPlugin downloads the bundle into ~/.claude/plugins/cache/<name>/ and
+// registers the plugin name in settings.json enabledPlugins.
+func (a *ClaudeCodeAdapter) installPlugin(art *registry.Artifact, payload string, scope Scope) error {
+	base, err := a.base(scope)
+	if err != nil {
+		return err
+	}
+	cacheDir := filepath.Join(base, "plugins", "cache", shortName(art.Name))
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		return fmt.Errorf("mkdir %s: %w", cacheDir, err)
+	}
+	if payload != "" {
+		if err := copyDir(payload, cacheDir); err != nil {
+			return err
+		}
+	}
+	// Register in settings.json enabledPlugins.
+	path := filepath.Join(base, "settings.json")
+	var s claudeSettings
+	if data, err := os.ReadFile(path); err == nil {
+		_ = json.Unmarshal(data, &s)
+	}
+	short := shortName(art.Name)
+	for _, p := range s.EnabledPlugins {
+		if p == short {
+			return nil // already registered
+		}
+	}
+	s.EnabledPlugins = append(s.EnabledPlugins, short)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal settings: %w", err)
+	}
+	return writeFileAtomic(path, data, 0o600)
+}
+
 func (a *ClaudeCodeAdapter) IsInstalled(name string) (bool, error) {
 	home, _ := os.UserHomeDir()
+	short := shortName(name)
 	candidates := []string{
-		filepath.Join(home, ".claude", "skills", shortName(name)),
-		filepath.Join(home, ".claude", "commands", shortName(name)+".md"),
-		filepath.Join(home, ".claude", "agents", shortName(name)+".md"),
+		filepath.Join(home, ".claude", "skills", short),
+		filepath.Join(home, ".claude", "commands", short+".md"),
+		filepath.Join(home, ".claude", "agents", short+".md"),
+		filepath.Join(home, ".claude", "plugins", "cache", short),
 	}
 	for _, p := range candidates {
 		if _, err := os.Stat(p); err == nil {
 			return true, nil
 		}
 	}
-	// Check MCP in settings.json
+	// Check MCP / enabledPlugins in settings.json
 	path := filepath.Join(home, ".claude", "settings.json")
 	var s claudeSettings
 	if data, err := os.ReadFile(path); err == nil {
 		_ = json.Unmarshal(data, &s)
-		if _, ok := s.MCPServers[shortName(name)]; ok {
+		if _, ok := s.MCPServers[short]; ok {
 			return true, nil
+		}
+		for _, p := range s.EnabledPlugins {
+			if p == short {
+				return true, nil
+			}
 		}
 	}
 	return false, nil
@@ -223,6 +319,7 @@ func (a *ClaudeCodeAdapter) Remove(name string, scope Scope) error {
 		filepath.Join(base, "skills", short),
 		filepath.Join(base, "commands", short+".md"),
 		filepath.Join(base, "agents", short+".md"),
+		filepath.Join(base, "plugins", "cache", short),
 	}
 	removed := false
 	for _, p := range candidates {
@@ -233,20 +330,30 @@ func (a *ClaudeCodeAdapter) Remove(name string, scope Scope) error {
 			removed = true
 		}
 	}
-	// Remove from settings.json MCP
-	if scope == ScopeUser {
-		home, _ := os.UserHomeDir()
-		path := filepath.Join(home, ".claude", "settings.json")
-		var s claudeSettings
-		if data, err := os.ReadFile(path); err == nil {
-			_ = json.Unmarshal(data, &s)
-			if _, ok := s.MCPServers[short]; ok {
-				delete(s.MCPServers, short)
-				if data, err := json.MarshalIndent(s, "", "  "); err == nil {
-					_ = writeFileAtomic(path, data, 0o600)
-				}
-				removed = true
+	// Remove from settings.json (MCP + enabledPlugins)
+	settingsPath := filepath.Join(base, "settings.json")
+	var s claudeSettings
+	if data, err := os.ReadFile(settingsPath); err == nil {
+		_ = json.Unmarshal(data, &s)
+		changed := false
+		if _, ok := s.MCPServers[short]; ok {
+			delete(s.MCPServers, short)
+			changed = true
+		}
+		filtered := s.EnabledPlugins[:0]
+		for _, p := range s.EnabledPlugins {
+			if p == short {
+				changed = true
+			} else {
+				filtered = append(filtered, p)
 			}
+		}
+		s.EnabledPlugins = filtered
+		if changed {
+			if data, err := json.MarshalIndent(s, "", "  "); err == nil {
+				_ = writeFileAtomic(settingsPath, data, 0o600)
+			}
+			removed = true
 		}
 	}
 	// Remove from project .mcp.json

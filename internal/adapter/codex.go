@@ -52,6 +52,8 @@ func (a *CodexAdapter) Install(art *registry.Artifact, payload string, scope Sco
 		return a.installMCP(art, scope)
 	case registry.TypeSlashCommand:
 		return a.installPrompt(art, payload, scope)
+	case registry.TypePlugin:
+		return a.installPlugin(art, payload, scope)
 	default:
 		return fmt.Errorf("codex: installing %q artifacts is not yet supported", art.Type)
 	}
@@ -155,12 +157,29 @@ func (a *CodexAdapter) installPrompt(art *registry.Artifact, payload string, sco
 	return os.WriteFile(dest, []byte(body), 0o644)
 }
 
+// installPlugin copies the bundle into ~/.codex/plugins/cache/<name>/.
+func (a *CodexAdapter) installPlugin(art *registry.Artifact, payload string, scope Scope) error {
+	base, err := a.base(scope)
+	if err != nil {
+		return err
+	}
+	cacheDir := filepath.Join(base, "plugins", "cache", shortName(art.Name))
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		return fmt.Errorf("mkdir %s: %w", cacheDir, err)
+	}
+	if payload == "" {
+		return nil
+	}
+	return copyDir(payload, cacheDir)
+}
+
 func (a *CodexAdapter) IsInstalled(name string) (bool, error) {
 	home, _ := os.UserHomeDir()
 	short := shortName(name)
 	candidates := []string{
 		filepath.Join(home, ".codex", "skills", short),
 		filepath.Join(home, ".codex", "prompts", short+".md"),
+		filepath.Join(home, ".codex", "plugins", "cache", short),
 	}
 	for _, p := range candidates {
 		if _, err := os.Stat(p); err == nil {
@@ -190,6 +209,7 @@ func (a *CodexAdapter) Remove(name string, scope Scope) error {
 	candidates := []string{
 		filepath.Join(base, "skills", short),
 		filepath.Join(base, "prompts", short+".md"),
+		filepath.Join(base, "plugins", "cache", short),
 	}
 	if scope == ScopeProject {
 		cwd, _ := os.Getwd()

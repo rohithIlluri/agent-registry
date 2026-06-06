@@ -55,6 +55,22 @@ type MCPServerConfig struct {
 	URL     string            `json:"url,omitempty"` // for streamable-HTTP transport
 }
 
+// HookCommand is a single hook action entry (always type "command" for now).
+type HookCommand struct {
+	Type    string `json:"type"`
+	Command string `json:"command"`
+}
+
+// HookMatcher pairs an optional tool-name matcher with its hook commands.
+type HookMatcher struct {
+	Matcher string        `json:"matcher,omitempty"`
+	Hooks   []HookCommand `json:"hooks"`
+}
+
+// HookDefinition maps Claude Code hook events (PreToolUse, PostToolUse,
+// Notification, Stop) to their matchers. Used inside AgentInstallConfig.
+type HookDefinition map[string][]HookMatcher
+
 // AgentInstallConfig describes how to install an artifact for a specific agent.
 type AgentInstallConfig struct {
 	// MCP servers
@@ -67,6 +83,12 @@ type AgentInstallConfig struct {
 	// Inline body for slash-commands or subagents
 	CommandBody string `json:"commandBody,omitempty"`
 	AgentBody   string `json:"agentBody,omitempty"`
+
+	// Hooks to register (Claude Code only for now)
+	Hooks HookDefinition `json:"hooks,omitempty"`
+
+	// Plugin bundle: path inside downloaded archive to the agent's manifest dir
+	PluginManifestDir string `json:"pluginManifestDir,omitempty"`
 }
 
 // InstallConfig maps agent name → install spec; the key "any" means all agents.
