@@ -29,7 +29,7 @@ func newUpdateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			data, err := os.ReadFile(dbPath) //nolint:gosec // #nosec G304 -- path from config.InstalledDBPath() under ~/.agent-registry/
+			data, err := os.ReadFile(dbPath) // #nosec G304 -- path from config.InstalledDBPath() under ~/.agent-registry/
 			if os.IsNotExist(err) {
 				fmt.Println("Nothing installed.")
 				return nil

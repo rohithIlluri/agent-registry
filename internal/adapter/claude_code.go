@@ -122,14 +122,14 @@ func (a *ClaudeCodeAdapter) writeMCPJSON(name string, srv *registry.MCPServerCon
 }
 
 type claudeHookMatcher struct {
-	Matcher string                     `json:"matcher,omitempty"`
-	Hooks   []registry.HookCommand     `json:"hooks"`
+	Matcher string                 `json:"matcher,omitempty"`
+	Hooks   []registry.HookCommand `json:"hooks"`
 }
 
 type claudeSettings struct {
-	MCPServers    map[string]registry.MCPServerConfig      `json:"mcpServers,omitempty"`
-	Hooks         map[string][]claudeHookMatcher           `json:"hooks,omitempty"`
-	EnabledPlugins []string                                `json:"enabledPlugins,omitempty"`
+	MCPServers     map[string]registry.MCPServerConfig `json:"mcpServers,omitempty"`
+	Hooks          map[string][]claudeHookMatcher      `json:"hooks,omitempty"`
+	EnabledPlugins []string                            `json:"enabledPlugins,omitempty"`
 }
 
 func (a *ClaudeCodeAdapter) writeSettingsMCP(name string, srv *registry.MCPServerConfig) error {
@@ -215,7 +215,7 @@ func (a *ClaudeCodeAdapter) installHook(art *registry.Artifact, scope Scope) err
 	}
 	path := filepath.Join(base, "settings.json")
 	var s claudeSettings
-	if data, err := os.ReadFile(path); err == nil { //nolint:gosec // #nosec G304 -- path is under ~/.claude, not user-supplied input
+	if data, err := os.ReadFile(path); err == nil { // #nosec G304 -- path is under ~/.claude, not user-supplied input
 		_ = json.Unmarshal(data, &s)
 	}
 	if s.Hooks == nil {
@@ -258,7 +258,7 @@ func (a *ClaudeCodeAdapter) installPlugin(art *registry.Artifact, payload string
 	// Register in settings.json enabledPlugins.
 	path := filepath.Join(base, "settings.json")
 	var s claudeSettings
-	if data, err := os.ReadFile(path); err == nil { //nolint:gosec // #nosec G304 -- path is under ~/.claude, not user-supplied input
+	if data, err := os.ReadFile(path); err == nil { // #nosec G304 -- path is under ~/.claude, not user-supplied input
 		_ = json.Unmarshal(data, &s)
 	}
 	short := shortName(art.Name)
@@ -333,7 +333,7 @@ func (a *ClaudeCodeAdapter) Remove(name string, scope Scope) error {
 	// Remove from settings.json (MCP + enabledPlugins)
 	settingsPath := filepath.Join(base, "settings.json")
 	var s claudeSettings
-	if data, err := os.ReadFile(settingsPath); err == nil { //nolint:gosec // #nosec G304 -- path is under ~/.claude, not user-supplied input
+	if data, err := os.ReadFile(settingsPath); err == nil { // #nosec G304 -- path is under ~/.claude, not user-supplied input
 		_ = json.Unmarshal(data, &s)
 		changed := false
 		if _, ok := s.MCPServers[short]; ok {

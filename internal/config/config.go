@@ -9,9 +9,9 @@ import (
 
 // Config holds persistent CLI configuration.
 type Config struct {
-	IndexURL    string `json:"indexURL,omitempty"`    // override default registry URL
+	IndexURL     string `json:"indexURL,omitempty"`     // override default registry URL
 	DefaultAgent string `json:"defaultAgent,omitempty"` // "claude-code" | "codex"
-	AutoConfirm bool   `json:"autoConfirm,omitempty"` // skip install confirmation
+	AutoConfirm  bool   `json:"autoConfirm,omitempty"`  // skip install confirmation
 }
 
 // dir returns the config directory, creating it if absent.

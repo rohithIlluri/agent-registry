@@ -73,7 +73,7 @@ func (c *Client) loadFromFile(path string) (*Index, error) {
 }
 
 func (c *Client) fetchAndCache(dest string) (*Index, error) {
-	resp, err := httpClient.Get(c.IndexURL) //nolint:gosec // URL is user-configurable or default
+	resp, err := httpClient.Get(c.IndexURL) // #nosec G107 -- URL is user-configurable or the default registry URL
 	if err != nil {
 		return nil, fmt.Errorf("fetch index from %s: %w", c.IndexURL, err)
 	}
@@ -158,7 +158,7 @@ func (c *Client) LoadArtifact(name string) (*Artifact, error) {
 	}
 	baseURL := ArtifactBaseURL(c.IndexURL)
 	url := baseURL + name + ".json"
-	resp, err := httpClient.Get(url) //nolint:gosec
+	resp, err := httpClient.Get(url) // #nosec G107 -- URL derived from the registry index URL, not raw user input
 	if err != nil {
 		return nil, fmt.Errorf("fetch artifact %s: %w", name, err)
 	}

@@ -14,16 +14,16 @@ var httpClient = &http.Client{Timeout: 30 * time.Second}
 
 // Package describes a runnable distribution of an MCP server.
 type Package struct {
-	RegistryType    string `json:"registryType"`    // "npm", "pypi", "docker", etc.
-	Name            string `json:"name,omitempty"`
-	Identifier      string `json:"identifier,omitempty"` // alternate field used in some entries
-	Version         string `json:"version,omitempty"`
-	Transport       string `json:"transport,omitempty"` // "stdio" | "http"
-	Command         string `json:"command,omitempty"`
-	Args            []string `json:"args,omitempty"`
-	Env             map[string]string `json:"env,omitempty"`
-	RuntimeHint     string `json:"runtimeHint,omitempty"`
-	AutoUpdate      bool   `json:"autoUpdate,omitempty"`
+	RegistryType string            `json:"registryType"` // "npm", "pypi", "docker", etc.
+	Name         string            `json:"name,omitempty"`
+	Identifier   string            `json:"identifier,omitempty"` // alternate field used in some entries
+	Version      string            `json:"version,omitempty"`
+	Transport    string            `json:"transport,omitempty"` // "stdio" | "http"
+	Command      string            `json:"command,omitempty"`
+	Args         []string          `json:"args,omitempty"`
+	Env          map[string]string `json:"env,omitempty"`
+	RuntimeHint  string            `json:"runtimeHint,omitempty"`
+	AutoUpdate   bool              `json:"autoUpdate,omitempty"`
 }
 
 // Repository is the source VCS reference for an MCP server.

@@ -31,7 +31,7 @@ func Verify(path, expected string) error {
 
 // SHA256File returns the lowercase hex SHA-256 of a file.
 func SHA256File(path string) (string, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- path is a registry artifact being verified
 	if err != nil {
 		return "", fmt.Errorf("open %s: %w", path, err)
 	}

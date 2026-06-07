@@ -8,10 +8,10 @@ import (
 
 func TestToArtifact_NPM(t *testing.T) {
 	s := Server{
-		ID:          "abc123",
-		Name:        "io.github.modelcontextprotocol/filesystem",
-		Description: "Read and write local files",
-		Repository:  Repository{URL: "https://github.com/modelcontextprotocol/servers"},
+		ID:            "abc123",
+		Name:          "io.github.modelcontextprotocol/filesystem",
+		Description:   "Read and write local files",
+		Repository:    Repository{URL: "https://github.com/modelcontextprotocol/servers"},
 		VersionDetail: VersionDetail{Version: "2.0.0"},
 		Packages: []Package{
 			{
@@ -54,8 +54,8 @@ func TestToArtifact_NPM(t *testing.T) {
 
 func TestToArtifact_PyPI(t *testing.T) {
 	s := Server{
-		Name:        "io.github.example/py-server",
-		Description: "A Python MCP server",
+		Name:          "io.github.example/py-server",
+		Description:   "A Python MCP server",
 		VersionDetail: VersionDetail{Version: "1.0.0"},
 		Packages: []Package{
 			{RegistryType: "pypi", Name: "example-mcp"},
@@ -73,8 +73,8 @@ func TestToArtifact_PyPI(t *testing.T) {
 
 func TestToArtifact_NoPackages(t *testing.T) {
 	s := Server{
-		Name:        "io.github.example/empty",
-		Description: "No packages",
+		Name:          "io.github.example/empty",
+		Description:   "No packages",
 		VersionDetail: VersionDetail{Version: "1.0.0"},
 	}
 	art := ToArtifact(s)
@@ -85,7 +85,7 @@ func TestToArtifact_NoPackages(t *testing.T) {
 
 func TestToArtifact_FallbackVersion(t *testing.T) {
 	s := Server{
-		Name:    "io.github.example/no-version",
+		Name:     "io.github.example/no-version",
 		Packages: []Package{{RegistryType: "npm", Name: "some-pkg"}},
 	}
 	art := ToArtifact(s)

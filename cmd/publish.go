@@ -17,9 +17,9 @@ import (
 
 func newPublishCmd() *cobra.Command {
 	var (
-		name     string
-		artType  string
-		outFile  string
+		name    string
+		artType string
+		outFile string
 	)
 	cmd := &cobra.Command{
 		Use:   "publish [path]",
@@ -139,13 +139,13 @@ func buildFromFile(path, name, artType string) (*registry.Artifact, error) {
 }
 
 type skillFrontmatter struct {
-	Name        string   `yaml:"name"`
-	Description string   `yaml:"description"`
+	Name         string   `yaml:"name"`
+	Description  string   `yaml:"description"`
 	AllowedTools []string `yaml:"allowed-tools"`
-	License     string   `yaml:"license"`
-	Version     string   `yaml:"version"`
-	Keywords    []string `yaml:"keywords"`
-	Category    string   `yaml:"category"`
+	License      string   `yaml:"license"`
+	Version      string   `yaml:"version"`
+	Keywords     []string `yaml:"keywords"`
+	Category     string   `yaml:"category"`
 }
 
 func buildSkillManifest(dir, nameOverride string) (*registry.Artifact, error) {
@@ -274,7 +274,7 @@ func parseSkillFrontmatter(content string) (*skillFrontmatter, error) {
 }
 
 func sha256File(path string) string {
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- path is CLI argument from developer publishing their own artifact
 	if err != nil {
 		return "unknown"
 	}
@@ -299,4 +299,3 @@ func sha256Dir(dir string) string {
 	})
 	return hex.EncodeToString(h.Sum(nil))
 }
-

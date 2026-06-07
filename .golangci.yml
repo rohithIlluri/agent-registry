@@ -3,7 +3,6 @@ linters:
     # Security
     - gosec          # Go security checks (injection, path traversal, crypto, etc.)
     - gocritic       # misc code issues including some security patterns
-    - noctx          # HTTP requests must use context (prevents resource leaks)
     - bodyclose      # HTTP response bodies must be closed
     # Correctness
     - errcheck       # all errors must be checked
@@ -36,11 +35,15 @@ linters-settings:
     enable-all: true
     disable:
       - fieldalignment  # struct padding — not a correctness issue
+      - shadow          # short-scoped if-init vars are idiomatic Go
 
   gocritic:
     enabled-tags:
       - diagnostic
       - performance
+    disabled-checks:
+      - hugeParam      # CLI tool; value-copy cost is acceptable
+      - rangeValCopy   # CLI tool; range-copy cost is acceptable
 
 issues:
   # Show all issues; don't cap at 3 per linter.

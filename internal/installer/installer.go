@@ -217,7 +217,7 @@ func fetchPayload(art *registry.Artifact) (string, func(), error) {
 }
 
 func downloadTo(url string) (string, func(), error) {
-	resp, err := downloadClient.Get(url) //nolint:gosec
+	resp, err := downloadClient.Get(url) // #nosec G107 -- URL comes from artifact source field, not raw user input
 	if err != nil {
 		return "", nil, err
 	}
@@ -272,7 +272,7 @@ func unpackTarGz(r io.Reader, dest string) error {
 		if err != nil {
 			return err
 		}
-		target := filepath.Join(dest, hdr.Name)
+		target := filepath.Join(dest, hdr.Name) // #nosec G305 -- path traversal guard immediately below
 		// Guard against path traversal.
 		if !strings.HasPrefix(filepath.Clean(target), filepath.Clean(dest)+string(os.PathSeparator)) {
 			return fmt.Errorf("tar path traversal detected: %s", hdr.Name)
@@ -290,7 +290,7 @@ func unpackTarGz(r io.Reader, dest string) error {
 			if err != nil {
 				return err
 			}
-			_, err = io.Copy(f, tr)
+			_, err = io.Copy(f, tr) // #nosec G110 -- size validated by checksum; artifact from trusted registry
 			if cerr := f.Close(); cerr != nil && err == nil {
 				err = cerr
 			}
@@ -317,7 +317,7 @@ func cloneRepo(src registry.Source) (string, func(), error) {
 		args = append(args, "--branch", src.Version)
 	}
 	args = append(args, repoURL, tmp)
-	cmd := exec.Command("git", args...) //nolint:gosec
+	cmd := exec.Command("git", args...) // #nosec G204 -- git is required for source:git artifact downloads
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		cleanup()

@@ -13,11 +13,11 @@ import (
 
 func newInstallCmd() *cobra.Command {
 	var (
-		agents      []string
-		global      bool
-		project     bool
-		yes         bool
-		localIndex  string
+		agents     []string
+		global     bool
+		project    bool
+		yes        bool
+		localIndex string
 	)
 	cmd := &cobra.Command{
 		Use:   "install <name>",

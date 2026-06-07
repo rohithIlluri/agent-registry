@@ -70,7 +70,7 @@ Describe how to use this skill and what it expects.
 Provide concrete examples of when this skill fires.
 `, name, name)
 
-	if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(skillMD), 0o644); err != nil { //nolint:gosec // #nosec G306 -- scaffold template files are developer-owned, world-readable is appropriate
+	if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(skillMD), 0o644); err != nil { // #nosec G306 -- scaffold template files are developer-owned, world-readable is appropriate
 		return err
 	}
 
@@ -104,7 +104,7 @@ func initMCP(name string) error {
 }
 `, name, name)
 
-	if err := os.WriteFile(filepath.Join(dir, "server.json"), []byte(serverJSON), 0o644); err != nil { //nolint:gosec // #nosec G306 -- scaffold template files are developer-owned, world-readable is appropriate
+	if err := os.WriteFile(filepath.Join(dir, "server.json"), []byte(serverJSON), 0o644); err != nil { // #nosec G306 -- scaffold template files are developer-owned, world-readable is appropriate
 		return err
 	}
 
@@ -118,7 +118,7 @@ func initMCP(name string) error {
 }
 `, name)
 
-	if err := os.WriteFile(filepath.Join(dir, ".mcp.json"), []byte(mcpJSON), 0o644); err != nil { //nolint:gosec // #nosec G306 -- scaffold template files are developer-owned, world-readable is appropriate
+	if err := os.WriteFile(filepath.Join(dir, ".mcp.json"), []byte(mcpJSON), 0o644); err != nil { // #nosec G306 -- scaffold template files are developer-owned, world-readable is appropriate
 		return err
 	}
 
@@ -145,7 +145,7 @@ agr install io.github.YOURUSER/%s
 | TODO     | No       | TODO        |
 `, name, name)
 
-	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte(readmeMD), 0o644); err != nil { //nolint:gosec // #nosec G306 -- scaffold template files are developer-owned, world-readable is appropriate
+	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte(readmeMD), 0o644); err != nil { // #nosec G306 -- scaffold template files are developer-owned, world-readable is appropriate
 		return err
 	}
 
@@ -204,10 +204,10 @@ func initPlugin(name string) error {
 }
 `, name, titleCase(strings.ReplaceAll(name, "-", " ")))
 
-	if err := os.WriteFile(filepath.Join(claudeDir, "plugin.json"), []byte(claudePlugin), 0o644); err != nil { //nolint:gosec // #nosec G306 -- scaffold template files are developer-owned, world-readable is appropriate
+	if err := os.WriteFile(filepath.Join(claudeDir, "plugin.json"), []byte(claudePlugin), 0o644); err != nil { // #nosec G306 -- scaffold template files are developer-owned, world-readable is appropriate
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(codexDir, "plugin.json"), []byte(codexPlugin), 0o644); err != nil { //nolint:gosec // #nosec G306 -- scaffold template files are developer-owned, world-readable is appropriate
+	if err := os.WriteFile(filepath.Join(codexDir, "plugin.json"), []byte(codexPlugin), 0o644); err != nil { // #nosec G306 -- scaffold template files are developer-owned, world-readable is appropriate
 		return err
 	}
 

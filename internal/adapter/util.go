@@ -66,7 +66,7 @@ func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
 }
 
 func copyFile(src, dst string) error {
-	in, err := os.Open(src)
+	in, err := os.Open(src) // #nosec G304 -- src is a validated artifact payload path
 	if err != nil {
 		return err
 	}

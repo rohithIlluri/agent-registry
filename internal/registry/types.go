@@ -25,11 +25,11 @@ const (
 type SourceType string
 
 const (
-	SourceNPM            SourceType = "npm"
-	SourcePyPI           SourceType = "pypi"
-	SourceGitHubRelease  SourceType = "github-release"
-	SourceGit            SourceType = "git"
-	SourceLocal          SourceType = "local"
+	SourceNPM           SourceType = "npm"
+	SourcePyPI          SourceType = "pypi"
+	SourceGitHubRelease SourceType = "github-release"
+	SourceGit           SourceType = "git"
+	SourceLocal         SourceType = "local"
 )
 
 type Author struct {
@@ -144,12 +144,12 @@ type Index struct {
 
 // InstalledEntry records a locally installed artifact.
 type InstalledEntry struct {
-	Name      string `json:"name"`
-	Type      string `json:"type"`
-	Version   string `json:"version"`
-	Agent     string `json:"agent"`
-	Scope     string `json:"scope"` // "user" | "project"
-	Path      string `json:"path"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Version     string `json:"version"`
+	Agent       string `json:"agent"`
+	Scope       string `json:"scope"` // "user" | "project"
+	Path        string `json:"path"`
 	InstalledAt string `json:"installedAt"`
 }
 
