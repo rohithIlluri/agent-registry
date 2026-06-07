@@ -52,7 +52,7 @@ func newRemoveCmd() *cobra.Command {
 			if !yes {
 				fmt.Printf("Remove %q from %s? [y/N] ", name, agentList(targets))
 				var resp string
-				fmt.Scanln(&resp)
+				_, _ = fmt.Scanln(&resp)
 				if strings.ToLower(strings.TrimSpace(resp)) != "y" {
 					return fmt.Errorf("cancelled")
 				}

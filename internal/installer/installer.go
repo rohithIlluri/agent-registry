@@ -69,7 +69,7 @@ func Install(art *registry.Artifact, opts Options) error {
 	if !opts.AutoConfirm {
 		fmt.Fprintf(w, "\nInstall %q for %s? [y/N] ", art.Name, agentNames(targets))
 		var resp string
-		fmt.Scanln(&resp)
+		_, _ = fmt.Scanln(&resp)
 		if strings.ToLower(strings.TrimSpace(resp)) != "y" {
 			return fmt.Errorf("install cancelled")
 		}
@@ -247,7 +247,9 @@ func downloadTo(url string) (string, func(), error) {
 		return "", nil, err
 	}
 	_, err = io.Copy(f, resp.Body)
-	f.Close()
+	if cerr := f.Close(); cerr != nil && err == nil {
+		err = cerr
+	}
 	if err != nil {
 		cleanup()
 		return "", nil, err
@@ -289,7 +291,9 @@ func unpackTarGz(r io.Reader, dest string) error {
 				return err
 			}
 			_, err = io.Copy(f, tr)
-			f.Close()
+			if cerr := f.Close(); cerr != nil && err == nil {
+				err = cerr
+			}
 			if err != nil {
 				return err
 			}
