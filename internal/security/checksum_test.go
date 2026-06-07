@@ -18,8 +18,8 @@ func TestSHA256File(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SHA256File: %v", err)
 	}
-	// Known SHA-256 of "hello world"
-	want := "b94d27b9934d3e08a52e52d7da7dabfac484efe04294e576b440b03a5c8e2a0e"
+	// Known SHA-256 test vector (not a secret). # pragma: allowlist secret
+	want := "b94d27b9934d3e08a52e52d7da7dabfac484efe04294e576b440b03a5c8e2a0e" // # pragma: allowlist secret
 	// Use a different well-known value: sha256("hello world\n") or just verify format
 	if len(got) != 64 {
 		t.Errorf("expected 64-char hex, got %q", got)

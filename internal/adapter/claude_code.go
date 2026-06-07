@@ -215,7 +215,7 @@ func (a *ClaudeCodeAdapter) installHook(art *registry.Artifact, scope Scope) err
 	}
 	path := filepath.Join(base, "settings.json")
 	var s claudeSettings
-	if data, err := os.ReadFile(path); err == nil {
+	if data, err := os.ReadFile(path); err == nil { //nolint:gosec // G304: path is under ~/.claude, not user-supplied input
 		_ = json.Unmarshal(data, &s)
 	}
 	if s.Hooks == nil {
@@ -229,7 +229,7 @@ func (a *ClaudeCodeAdapter) installHook(art *registry.Artifact, scope Scope) err
 			})
 		}
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(s, "", "  ")
@@ -247,7 +247,7 @@ func (a *ClaudeCodeAdapter) installPlugin(art *registry.Artifact, payload string
 		return err
 	}
 	cacheDir := filepath.Join(base, "plugins", "cache", shortName(art.Name))
-	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+	if err := os.MkdirAll(cacheDir, 0o750); err != nil {
 		return fmt.Errorf("mkdir %s: %w", cacheDir, err)
 	}
 	if payload != "" {
@@ -258,7 +258,7 @@ func (a *ClaudeCodeAdapter) installPlugin(art *registry.Artifact, payload string
 	// Register in settings.json enabledPlugins.
 	path := filepath.Join(base, "settings.json")
 	var s claudeSettings
-	if data, err := os.ReadFile(path); err == nil {
+	if data, err := os.ReadFile(path); err == nil { //nolint:gosec // G304: path is under ~/.claude, not user-supplied input
 		_ = json.Unmarshal(data, &s)
 	}
 	short := shortName(art.Name)
@@ -268,7 +268,7 @@ func (a *ClaudeCodeAdapter) installPlugin(art *registry.Artifact, payload string
 		}
 	}
 	s.EnabledPlugins = append(s.EnabledPlugins, short)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(s, "", "  ")
@@ -333,7 +333,7 @@ func (a *ClaudeCodeAdapter) Remove(name string, scope Scope) error {
 	// Remove from settings.json (MCP + enabledPlugins)
 	settingsPath := filepath.Join(base, "settings.json")
 	var s claudeSettings
-	if data, err := os.ReadFile(settingsPath); err == nil {
+	if data, err := os.ReadFile(settingsPath); err == nil { //nolint:gosec // G304: path is under ~/.claude, not user-supplied input
 		_ = json.Unmarshal(data, &s)
 		changed := false
 		if _, ok := s.MCPServers[short]; ok {

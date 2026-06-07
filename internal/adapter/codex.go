@@ -164,7 +164,7 @@ func (a *CodexAdapter) installPlugin(art *registry.Artifact, payload string, sco
 		return err
 	}
 	cacheDir := filepath.Join(base, "plugins", "cache", shortName(art.Name))
-	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+	if err := os.MkdirAll(cacheDir, 0o750); err != nil {
 		return fmt.Errorf("mkdir %s: %w", cacheDir, err)
 	}
 	if payload == "" {

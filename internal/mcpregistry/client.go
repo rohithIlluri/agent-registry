@@ -79,27 +79,10 @@ func (c *Client) ListAll(progress func(n int)) ([]Server, error) {
 		}
 		u.RawQuery = q.Encode()
 
-		req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+		page, err := c.fetchPage(u)
 		if err != nil {
-			return nil, fmt.Errorf("build request: %w", err)
+			return nil, err
 		}
-		req.Header.Set("Accept", "application/json")
-
-		resp, err := httpClient.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("fetch %s: %w", u, err)
-		}
-		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
-			return nil, fmt.Errorf("registry returned HTTP %d", resp.StatusCode)
-		}
-		var page listResponse
-		if err := json.NewDecoder(resp.Body).Decode(&page); err != nil {
-			resp.Body.Close()
-			return nil, fmt.Errorf("decode response: %w", err)
-		}
-		resp.Body.Close()
-
 		all = append(all, page.Servers...)
 		if progress != nil {
 			progress(len(all))
@@ -110,4 +93,25 @@ func (c *Client) ListAll(progress func(n int)) ([]Server, error) {
 		cursor = page.NextCursor
 	}
 	return all, nil
+}
+
+func (c *Client) fetchPage(u *url.URL) (*listResponse, error) {
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetch %s: %w", u, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("registry returned HTTP %d", resp.StatusCode)
+	}
+	var page listResponse
+	if err := json.NewDecoder(resp.Body).Decode(&page); err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+	return &page, nil
 }
