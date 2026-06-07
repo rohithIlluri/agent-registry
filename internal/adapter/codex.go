@@ -72,7 +72,7 @@ func (a *CodexAdapter) installSkill(art *registry.Artifact, payload string, scop
 	} else {
 		skillsDir = filepath.Join(base, "skills", shortName(art.Name))
 	}
-	if err := os.MkdirAll(skillsDir, 0o755); err != nil {
+	if err := os.MkdirAll(skillsDir, 0o750); err != nil {
 		return fmt.Errorf("mkdir %s: %w", skillsDir, err)
 	}
 	return copyDir(payload, skillsDir)
@@ -104,7 +104,7 @@ func (a *CodexAdapter) writeMCPToml(name string, srv *registry.MCPServerConfig, 
 
 	// Read existing TOML as a raw map so we don't lose unknown fields.
 	raw := make(map[string]interface{})
-	if data, err := os.ReadFile(cfgPath); err == nil {
+	if data, err := os.ReadFile(cfgPath); err == nil { // #nosec G304 -- cfgPath is under ~/.codex, not user-supplied
 		_ = toml.Unmarshal(data, &raw)
 	}
 
@@ -141,20 +141,20 @@ func (a *CodexAdapter) installPrompt(art *registry.Artifact, payload string, sco
 		return err
 	}
 	dir := filepath.Join(base, "prompts")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return err
 	}
 	cfg := art.Install["codex"]
 	body := cfg.CommandBody
 	if body == "" && payload != "" {
-		data, err := os.ReadFile(payload)
+		data, err := os.ReadFile(payload) // #nosec G304 -- payload path from installer, not user input
 		if err != nil {
 			return err
 		}
 		body = string(data)
 	}
 	dest := filepath.Join(dir, shortName(art.Name)+".md")
-	return os.WriteFile(dest, []byte(body), 0o644)
+	return os.WriteFile(dest, []byte(body), 0o644) // #nosec G306 -- prompt files are read by the agent at runtime
 }
 
 // installPlugin copies the bundle into ~/.codex/plugins/cache/<name>/.
@@ -188,7 +188,7 @@ func (a *CodexAdapter) IsInstalled(name string) (bool, error) {
 	}
 	cfgPath, _ := a.configPath(ScopeUser)
 	raw := make(map[string]interface{})
-	if data, err := os.ReadFile(cfgPath); err == nil {
+	if data, err := os.ReadFile(cfgPath); err == nil { // #nosec G304 -- cfgPath is under ~/.codex, not user-supplied
 		_ = toml.Unmarshal(data, &raw)
 		if servers, ok := raw["mcp_servers"].(map[string]interface{}); ok {
 			if _, ok := servers[short]; ok {
@@ -226,7 +226,7 @@ func (a *CodexAdapter) Remove(name string, scope Scope) error {
 	// Remove from config.toml
 	cfgPath, _ := a.configPath(scope)
 	raw := make(map[string]interface{})
-	if data, err := os.ReadFile(cfgPath); err == nil {
+	if data, err := os.ReadFile(cfgPath); err == nil { // #nosec G304 -- cfgPath is under ~/.codex, not user-supplied
 		_ = toml.Unmarshal(data, &raw)
 		if servers, ok := raw["mcp_servers"].(map[string]interface{}); ok {
 			if _, ok := servers[short]; ok {

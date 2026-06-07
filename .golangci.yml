@@ -40,11 +40,7 @@ linters-settings:
   gocritic:
     enabled-tags:
       - diagnostic
-      - security
       - performance
-    disabled-checks:
-      - commentedOutCode
-      - paramTypeCombine
 
 issues:
   # Show all issues; don't cap at 3 per linter.

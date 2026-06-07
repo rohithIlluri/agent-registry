@@ -78,7 +78,7 @@ func (a *ClaudeCodeAdapter) installSkill(art *registry.Artifact, payload string,
 		return err
 	}
 	dest := filepath.Join(base, "skills", shortName(art.Name))
-	if err := os.MkdirAll(dest, 0o755); err != nil {
+	if err := os.MkdirAll(dest, 0o750); err != nil {
 		return fmt.Errorf("mkdir %s: %w", dest, err)
 	}
 	return copyDir(payload, dest)
@@ -107,7 +107,7 @@ func (a *ClaudeCodeAdapter) writeMCPJSON(name string, srv *registry.MCPServerCon
 	cwd, _ := os.Getwd()
 	path := filepath.Join(cwd, ".mcp.json")
 	var f mcpJSONFile
-	if data, err := os.ReadFile(path); err == nil {
+	if data, err := os.ReadFile(path); err == nil { // #nosec G304 -- path is project CWD .mcp.json
 		_ = json.Unmarshal(data, &f)
 	}
 	if f.MCPServers == nil {
@@ -136,14 +136,14 @@ func (a *ClaudeCodeAdapter) writeSettingsMCP(name string, srv *registry.MCPServe
 	home, _ := os.UserHomeDir()
 	path := filepath.Join(home, ".claude", "settings.json")
 	var s claudeSettings
-	if data, err := os.ReadFile(path); err == nil {
+	if data, err := os.ReadFile(path); err == nil { // #nosec G304 -- path is ~/.claude/settings.json
 		_ = json.Unmarshal(data, &s)
 	}
 	if s.MCPServers == nil {
 		s.MCPServers = make(map[string]registry.MCPServerConfig)
 	}
 	s.MCPServers[shortName(name)] = *srv
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(s, "", "  ")
@@ -159,7 +159,7 @@ func (a *ClaudeCodeAdapter) installCommand(art *registry.Artifact, payload strin
 		return err
 	}
 	dir := filepath.Join(base, "commands")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return err
 	}
 	// payload is the .md file, or we use the inline body
@@ -167,7 +167,7 @@ func (a *ClaudeCodeAdapter) installCommand(art *registry.Artifact, payload strin
 	body := cfg.CommandBody
 	if body == "" {
 		if payload != "" {
-			data, err := os.ReadFile(payload)
+			data, err := os.ReadFile(payload) // #nosec G304 -- payload path from installer, not user input
 			if err != nil {
 				return err
 			}
@@ -175,7 +175,7 @@ func (a *ClaudeCodeAdapter) installCommand(art *registry.Artifact, payload strin
 		}
 	}
 	dest := filepath.Join(dir, shortName(art.Name)+".md")
-	return os.WriteFile(dest, []byte(body), 0o644)
+	return os.WriteFile(dest, []byte(body), 0o644) // #nosec G306 -- command files are read by the agent at runtime
 }
 
 func (a *ClaudeCodeAdapter) installSubagent(art *registry.Artifact, payload string, scope Scope) error {
@@ -184,20 +184,20 @@ func (a *ClaudeCodeAdapter) installSubagent(art *registry.Artifact, payload stri
 		return err
 	}
 	dir := filepath.Join(base, "agents")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return err
 	}
 	cfg := art.Install["claude-code"]
 	body := cfg.AgentBody
 	if body == "" && payload != "" {
-		data, err := os.ReadFile(payload)
+		data, err := os.ReadFile(payload) // #nosec G304 -- payload path from installer, not user input
 		if err != nil {
 			return err
 		}
 		body = string(data)
 	}
 	dest := filepath.Join(dir, shortName(art.Name)+".md")
-	return os.WriteFile(dest, []byte(body), 0o644)
+	return os.WriteFile(dest, []byte(body), 0o644) // #nosec G306 -- subagent files are read by the agent at runtime
 }
 
 // installHook merges hook definitions from the artifact into ~/.claude/settings.json.
@@ -215,7 +215,7 @@ func (a *ClaudeCodeAdapter) installHook(art *registry.Artifact, scope Scope) err
 	}
 	path := filepath.Join(base, "settings.json")
 	var s claudeSettings
-	if data, err := os.ReadFile(path); err == nil { //nolint:gosec // G304: path is under ~/.claude, not user-supplied input
+	if data, err := os.ReadFile(path); err == nil { //nolint:gosec // #nosec G304 -- path is under ~/.claude, not user-supplied input
 		_ = json.Unmarshal(data, &s)
 	}
 	if s.Hooks == nil {
@@ -258,7 +258,7 @@ func (a *ClaudeCodeAdapter) installPlugin(art *registry.Artifact, payload string
 	// Register in settings.json enabledPlugins.
 	path := filepath.Join(base, "settings.json")
 	var s claudeSettings
-	if data, err := os.ReadFile(path); err == nil { //nolint:gosec // G304: path is under ~/.claude, not user-supplied input
+	if data, err := os.ReadFile(path); err == nil { //nolint:gosec // #nosec G304 -- path is under ~/.claude, not user-supplied input
 		_ = json.Unmarshal(data, &s)
 	}
 	short := shortName(art.Name)
@@ -295,7 +295,7 @@ func (a *ClaudeCodeAdapter) IsInstalled(name string) (bool, error) {
 	// Check MCP / enabledPlugins in settings.json
 	path := filepath.Join(home, ".claude", "settings.json")
 	var s claudeSettings
-	if data, err := os.ReadFile(path); err == nil {
+	if data, err := os.ReadFile(path); err == nil { // #nosec G304 -- path is ~/.claude/settings.json
 		_ = json.Unmarshal(data, &s)
 		if _, ok := s.MCPServers[short]; ok {
 			return true, nil
@@ -333,7 +333,7 @@ func (a *ClaudeCodeAdapter) Remove(name string, scope Scope) error {
 	// Remove from settings.json (MCP + enabledPlugins)
 	settingsPath := filepath.Join(base, "settings.json")
 	var s claudeSettings
-	if data, err := os.ReadFile(settingsPath); err == nil { //nolint:gosec // G304: path is under ~/.claude, not user-supplied input
+	if data, err := os.ReadFile(settingsPath); err == nil { //nolint:gosec // #nosec G304 -- path is under ~/.claude, not user-supplied input
 		_ = json.Unmarshal(data, &s)
 		changed := false
 		if _, ok := s.MCPServers[short]; ok {
@@ -361,7 +361,7 @@ func (a *ClaudeCodeAdapter) Remove(name string, scope Scope) error {
 		cwd, _ := os.Getwd()
 		path := filepath.Join(cwd, ".mcp.json")
 		var f mcpJSONFile
-		if data, err := os.ReadFile(path); err == nil {
+		if data, err := os.ReadFile(path); err == nil { // #nosec G304 -- path is project CWD .mcp.json
 			_ = json.Unmarshal(data, &f)
 			if _, ok := f.MCPServers[short]; ok {
 				delete(f.MCPServers, short)

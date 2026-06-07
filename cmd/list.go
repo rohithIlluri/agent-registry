@@ -24,7 +24,7 @@ func newListCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			data, err := os.ReadFile(dbPath)
+			data, err := os.ReadFile(dbPath) // #nosec G304 -- dbPath is ~/.agent-registry/installed.json
 			if os.IsNotExist(err) {
 				fmt.Println("No artifacts installed.")
 				return nil

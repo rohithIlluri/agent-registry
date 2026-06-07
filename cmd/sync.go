@@ -82,7 +82,7 @@ func runSync(dryRun bool, outDir, source, trustStr string, limit int) error {
 	// Load existing index (if present) so we can merge.
 	indexPath := filepath.Join(outDir, "index.json")
 	existing := &registry.Index{Version: "1", Artifacts: nil}
-	if data, err := os.ReadFile(indexPath); err == nil { //nolint:gosec // G304: path is from user-supplied --out flag, not raw user input
+	if data, err := os.ReadFile(indexPath); err == nil { //nolint:gosec // #nosec G304 -- path is from user-supplied --out flag, not raw user input
 		_ = json.Unmarshal(data, existing)
 	}
 
@@ -137,7 +137,7 @@ func runSync(dryRun bool, outDir, source, trustStr string, limit int) error {
 		if err != nil {
 			return fmt.Errorf("marshal %s: %w", art.Name, err)
 		}
-		if err := os.WriteFile(artPath, data, 0o644); err != nil { //nolint:gosec // G306: registry artifacts are public files, world-readable is intentional
+		if err := os.WriteFile(artPath, data, 0o644); err != nil { //nolint:gosec // #nosec G306 -- registry artifacts are public files, world-readable is intentional
 			return fmt.Errorf("write %s: %w", artPath, err)
 		}
 	}
@@ -159,7 +159,7 @@ func runSync(dryRun bool, outDir, source, trustStr string, limit int) error {
 	if err := os.MkdirAll(outDir, 0o750); err != nil {
 		return fmt.Errorf("mkdir %s: %w", outDir, err)
 	}
-	if err := os.WriteFile(indexPath, indexData, 0o644); err != nil { //nolint:gosec // G306: registry index is a public file, world-readable is intentional
+	if err := os.WriteFile(indexPath, indexData, 0o644); err != nil { //nolint:gosec // #nosec G306 -- registry index is a public file, world-readable is intentional
 		return fmt.Errorf("write index: %w", err)
 	}
 

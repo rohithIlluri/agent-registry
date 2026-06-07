@@ -63,7 +63,7 @@ Steps to publish:
 			}
 
 			if outFile != "" {
-				if err := os.WriteFile(outFile, out, 0o644); err != nil {
+				if err := os.WriteFile(outFile, out, 0o644); err != nil { // #nosec G306 -- user-specified output file for manifest
 					return err
 				}
 				fmt.Fprintf(os.Stderr, "Manifest written to %s\n", outFile)
@@ -115,7 +115,7 @@ func buildFromFile(path, name, artType string) (*registry.Artifact, error) {
 			return nil, fmt.Errorf("cannot detect artifact type from %s; set --type", path)
 		}
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is CLI argument from developer publishing their own artifact
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ type skillFrontmatter struct {
 
 func buildSkillManifest(dir, nameOverride string) (*registry.Artifact, error) {
 	skillPath := filepath.Join(dir, "SKILL.md")
-	data, err := os.ReadFile(skillPath)
+	data, err := os.ReadFile(skillPath) // #nosec G304 -- path is developer's own artifact directory
 	if err != nil {
 		return nil, fmt.Errorf("read SKILL.md: %w", err)
 	}
@@ -210,7 +210,7 @@ func buildSkillManifest(dir, nameOverride string) (*registry.Artifact, error) {
 
 func buildMCPManifest(dir, nameOverride string) (*registry.Artifact, error) {
 	srvPath := filepath.Join(dir, "server.json")
-	data, err := os.ReadFile(srvPath)
+	data, err := os.ReadFile(srvPath) // #nosec G304 -- path is developer's own artifact directory
 	if err != nil {
 		return nil, fmt.Errorf("read server.json: %w", err)
 	}
@@ -290,7 +290,7 @@ func sha256Dir(dir string) string {
 		if err != nil || d.IsDir() {
 			return nil
 		}
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) // #nosec G304 -- path is developer's own artifact directory
 		if err != nil {
 			return nil
 		}

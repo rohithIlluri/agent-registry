@@ -30,7 +30,7 @@ func copyDir(src, dst string) error {
 		}
 		target := filepath.Join(dst, rel)
 		if d.IsDir() {
-			return os.MkdirAll(target, 0o755)
+			return os.MkdirAll(target, 0o755) // #nosec G301 -- copying artifact bundle; preserving source dir permissions
 		}
 		return copyFile(path, target)
 	})
@@ -71,7 +71,7 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	defer in.Close()
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil { // #nosec G301 -- dst parent is an artifact install dir
 		return err
 	}
 	out, err := os.Create(dst)

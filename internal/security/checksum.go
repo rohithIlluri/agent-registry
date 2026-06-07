@@ -59,7 +59,7 @@ func SHA256Dir(dir string) (string, error) {
 		if e.IsDir() {
 			continue
 		}
-		data, err := os.ReadFile(fmt.Sprintf("%s/%s", dir, e.Name()))
+		data, err := os.ReadFile(fmt.Sprintf("%s/%s", dir, e.Name())) // #nosec G304 -- dir is a trusted artifact path
 		if err != nil {
 			return "", err
 		}

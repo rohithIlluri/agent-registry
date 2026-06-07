@@ -279,11 +279,11 @@ func unpackTarGz(r io.Reader, dest string) error {
 		}
 		switch hdr.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0o755); err != nil {
+			if err := os.MkdirAll(target, 0o755); err != nil { // #nosec G301 -- target is inside a temp dir for artifact extraction
 				return err
 			}
 		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil { // #nosec G301 -- target is inside a temp dir for artifact extraction
 				return err
 			}
 			f, err := os.Create(target)
@@ -332,7 +332,7 @@ func recordInstall(art *registry.Artifact, targets []adapter.Adapter, scope adap
 		return err
 	}
 	var db registry.InstalledDB
-	if data, err := os.ReadFile(dbPath); err == nil {
+	if data, err := os.ReadFile(dbPath); err == nil { // #nosec G304 -- dbPath is ~/.agent-registry/installed.json
 		_ = json.Unmarshal(data, &db)
 	}
 	now := time.Now().UTC().Format(time.RFC3339)

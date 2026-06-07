@@ -97,7 +97,7 @@ func removeFromDB(name string, targets []adapter.Adapter) error {
 	if err != nil {
 		return err
 	}
-	data, err := os.ReadFile(dbPath)
+	data, err := os.ReadFile(dbPath) // #nosec G304 -- dbPath is ~/.agent-registry/installed.json
 	if os.IsNotExist(err) {
 		return nil
 	}

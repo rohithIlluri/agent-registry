@@ -61,7 +61,7 @@ func (c *Client) LoadIndex() (*Index, error) {
 }
 
 func (c *Client) loadFromFile(path string) (*Index, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is a cache file or local index path, not user-supplied
 	if err != nil {
 		return nil, fmt.Errorf("read index %s: %w", path, err)
 	}
@@ -85,9 +85,9 @@ func (c *Client) fetchAndCache(dest string) (*Index, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&idx); err != nil {
 		return nil, fmt.Errorf("decode index: %w", err)
 	}
-	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err == nil {
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err == nil { // #nosec G301 -- cache dir under ~/.cache
 		data, _ := json.MarshalIndent(idx, "", "  ")
-		_ = os.WriteFile(dest, data, 0o644)
+		_ = os.WriteFile(dest, data, 0o644) // #nosec G306 -- registry index cache is a public data file
 	}
 	return &idx, nil
 }
@@ -177,7 +177,7 @@ func (c *Client) LoadArtifact(name string) (*Artifact, error) {
 }
 
 func (c *Client) loadArtifactFromFile(path string) (*Artifact, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is a local registry artifacts path, not user-supplied
 	if err != nil {
 		return nil, fmt.Errorf("read artifact %s: %w", path, err)
 	}
