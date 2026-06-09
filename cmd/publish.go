@@ -1,26 +1,23 @@
 package cmd
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/rohithilluri/agent-registry/internal/registry"
+	"github.com/rohithilluri/agent-registry/internal/security"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
 func newPublishCmd() *cobra.Command {
 	var (
-		name     string
-		artType  string
-		outFile  string
+		name    string
+		artType string
+		outFile string
 	)
 	cmd := &cobra.Command{
 		Use:   "publish [path]",
@@ -64,7 +61,7 @@ Steps to publish:
 			}
 
 			if outFile != "" {
-				if err := os.WriteFile(outFile, out, 0o644); err != nil {
+				if err := os.WriteFile(outFile, out, 0o644); err != nil { // #nosec G306 -- user-specified output file for manifest
 					return err
 				}
 				fmt.Fprintf(os.Stderr, "Manifest written to %s\n", outFile)
@@ -116,11 +113,14 @@ func buildFromFile(path, name, artType string) (*registry.Artifact, error) {
 			return nil, fmt.Errorf("cannot detect artifact type from %s; set --type", path)
 		}
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is CLI argument from developer publishing their own artifact
 	if err != nil {
 		return nil, err
 	}
-	cksum := sha256File(path)
+	cksum, err := security.SHA256File(path)
+	if err != nil {
+		return nil, fmt.Errorf("checksum %s: %w", path, err)
+	}
 	art := &registry.Artifact{
 		Name:        name,
 		Type:        registry.ArtifactType(artType),
@@ -140,18 +140,18 @@ func buildFromFile(path, name, artType string) (*registry.Artifact, error) {
 }
 
 type skillFrontmatter struct {
-	Name        string   `yaml:"name"`
-	Description string   `yaml:"description"`
+	Name         string   `yaml:"name"`
+	Description  string   `yaml:"description"`
 	AllowedTools []string `yaml:"allowed-tools"`
-	License     string   `yaml:"license"`
-	Version     string   `yaml:"version"`
-	Keywords    []string `yaml:"keywords"`
-	Category    string   `yaml:"category"`
+	License      string   `yaml:"license"`
+	Version      string   `yaml:"version"`
+	Keywords     []string `yaml:"keywords"`
+	Category     string   `yaml:"category"`
 }
 
 func buildSkillManifest(dir, nameOverride string) (*registry.Artifact, error) {
 	skillPath := filepath.Join(dir, "SKILL.md")
-	data, err := os.ReadFile(skillPath)
+	data, err := os.ReadFile(skillPath) // #nosec G304 -- path is developer's own artifact directory
 	if err != nil {
 		return nil, fmt.Errorf("read SKILL.md: %w", err)
 	}
@@ -176,7 +176,10 @@ func buildSkillManifest(dir, nameOverride string) (*registry.Artifact, error) {
 		hasScripts = true
 	}
 
-	cksum := sha256Dir(dir)
+	cksum, err := security.SHA256Dir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("checksum %s: %w", dir, err)
+	}
 	cat := fm.Category
 	if cat == "" {
 		cat = "productivity"
@@ -211,7 +214,7 @@ func buildSkillManifest(dir, nameOverride string) (*registry.Artifact, error) {
 
 func buildMCPManifest(dir, nameOverride string) (*registry.Artifact, error) {
 	srvPath := filepath.Join(dir, "server.json")
-	data, err := os.ReadFile(srvPath)
+	data, err := os.ReadFile(srvPath) // #nosec G304 -- path is developer's own artifact directory
 	if err != nil {
 		return nil, fmt.Errorf("read server.json: %w", err)
 	}
@@ -235,7 +238,10 @@ func buildMCPManifest(dir, nameOverride string) (*registry.Artifact, error) {
 		artName = "io.github.YOURUSER/my-mcp-server"
 	}
 
-	cksum := sha256File(srvPath)
+	cksum, err := security.SHA256File(srvPath)
+	if err != nil {
+		return nil, fmt.Errorf("checksum %s: %w", srvPath, err)
+	}
 	return &registry.Artifact{
 		Name:        artName,
 		Type:        registry.TypeMCPServer,
@@ -273,33 +279,3 @@ func parseSkillFrontmatter(content string) (*skillFrontmatter, error) {
 	}
 	return &fm, nil
 }
-
-func sha256File(path string) string {
-	f, err := os.Open(path)
-	if err != nil {
-		return "unknown"
-	}
-	defer f.Close()
-	h := sha256.New()
-	_, _ = io.Copy(h, f)
-	return hex.EncodeToString(h.Sum(nil))
-}
-
-func sha256Dir(dir string) string {
-	h := sha256.New()
-	_ = filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return nil
-		}
-		h.Write(data)
-		return nil
-	})
-	return hex.EncodeToString(h.Sum(nil))
-}
-
-// Keep the time import used by installer only via a blank reference.
-var _ = time.Now

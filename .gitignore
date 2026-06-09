@@ -1,0 +1,16 @@
+# Build output
+agr
+agr.exe
+
+# Go test cache / coverage
+*.test
+*.out
+coverage.html
+
+# Temp files
+*.tmp
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

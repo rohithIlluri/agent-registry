@@ -18,6 +18,15 @@ func NewCodexAdapter() *CodexAdapter { return &CodexAdapter{} }
 
 func (a *CodexAdapter) Name() string { return "codex" }
 
+func (a *CodexAdapter) SupportedTypes() []registry.ArtifactType {
+	return []registry.ArtifactType{
+		registry.TypeSkill,
+		registry.TypeMCPServer,
+		registry.TypeSlashCommand,
+		registry.TypePlugin,
+	}
+}
+
 func (a *CodexAdapter) Detect() bool {
 	home, _ := os.UserHomeDir()
 	if _, err := os.Stat(filepath.Join(home, ".codex")); err == nil {
@@ -52,6 +61,8 @@ func (a *CodexAdapter) Install(art *registry.Artifact, payload string, scope Sco
 		return a.installMCP(art, scope)
 	case registry.TypeSlashCommand:
 		return a.installPrompt(art, payload, scope)
+	case registry.TypePlugin:
+		return a.installPlugin(art, payload, scope)
 	default:
 		return fmt.Errorf("codex: installing %q artifacts is not yet supported", art.Type)
 	}
@@ -70,21 +81,17 @@ func (a *CodexAdapter) installSkill(art *registry.Artifact, payload string, scop
 	} else {
 		skillsDir = filepath.Join(base, "skills", shortName(art.Name))
 	}
-	if err := os.MkdirAll(skillsDir, 0o755); err != nil {
+	if err := os.MkdirAll(skillsDir, 0o750); err != nil {
 		return fmt.Errorf("mkdir %s: %w", skillsDir, err)
 	}
 	return copyDir(payload, skillsDir)
 }
 
 // installMCP appends an [mcp_servers.<name>] table to ~/.codex/config.toml.
+// MCP server configs are transport-level and agent-agnostic, so a claude-code
+// entry works as a fallback.
 func (a *CodexAdapter) installMCP(art *registry.Artifact, scope Scope) error {
-	cfg, ok := art.Install["codex"]
-	if !ok {
-		cfg, ok = art.Install["claude-code"]
-	}
-	if !ok {
-		cfg, ok = art.Install["any"]
-	}
+	cfg, ok := art.InstallFor(a.Name(), "claude-code")
 	if !ok || cfg.MCPServer == nil {
 		return fmt.Errorf("artifact %q has no codex MCP install config", art.Name)
 	}
@@ -102,7 +109,7 @@ func (a *CodexAdapter) writeMCPToml(name string, srv *registry.MCPServerConfig, 
 
 	// Read existing TOML as a raw map so we don't lose unknown fields.
 	raw := make(map[string]interface{})
-	if data, err := os.ReadFile(cfgPath); err == nil {
+	if data, err := os.ReadFile(cfgPath); err == nil { // #nosec G304 -- cfgPath is under ~/.codex, not user-supplied
 		_ = toml.Unmarshal(data, &raw)
 	}
 
@@ -130,7 +137,7 @@ func (a *CodexAdapter) writeMCPToml(name string, srv *registry.MCPServerConfig, 
 	if err := enc.Encode(raw); err != nil {
 		return fmt.Errorf("encode TOML: %w", err)
 	}
-	return os.WriteFile(cfgPath, []byte(sb.String()), 0o600)
+	return writeFileAtomic(cfgPath, []byte(sb.String()), 0o600)
 }
 
 func (a *CodexAdapter) installPrompt(art *registry.Artifact, payload string, scope Scope) error {
@@ -139,20 +146,41 @@ func (a *CodexAdapter) installPrompt(art *registry.Artifact, payload string, sco
 		return err
 	}
 	dir := filepath.Join(base, "prompts")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return err
 	}
-	cfg := art.Install["codex"]
+	// Command bodies are plain markdown prompts, so a claude-code entry
+	// works as a fallback.
+	cfg, _ := art.InstallFor(a.Name(), "claude-code")
 	body := cfg.CommandBody
 	if body == "" && payload != "" {
-		data, err := os.ReadFile(payload)
+		data, err := os.ReadFile(payload) // #nosec G304 -- payload path from installer, not user input
 		if err != nil {
 			return err
 		}
 		body = string(data)
 	}
+	if body == "" {
+		return fmt.Errorf("artifact %q has no command body or payload to install", art.Name)
+	}
 	dest := filepath.Join(dir, shortName(art.Name)+".md")
-	return os.WriteFile(dest, []byte(body), 0o644)
+	return os.WriteFile(dest, []byte(body), 0o644) // #nosec G306 -- prompt files are read by the agent at runtime
+}
+
+// installPlugin copies the bundle into ~/.codex/plugins/cache/<name>/.
+func (a *CodexAdapter) installPlugin(art *registry.Artifact, payload string, scope Scope) error {
+	base, err := a.base(scope)
+	if err != nil {
+		return err
+	}
+	cacheDir := filepath.Join(base, "plugins", "cache", shortName(art.Name))
+	if err := os.MkdirAll(cacheDir, 0o750); err != nil {
+		return fmt.Errorf("mkdir %s: %w", cacheDir, err)
+	}
+	if payload == "" {
+		return nil
+	}
+	return copyDir(payload, cacheDir)
 }
 
 func (a *CodexAdapter) IsInstalled(name string) (bool, error) {
@@ -161,6 +189,7 @@ func (a *CodexAdapter) IsInstalled(name string) (bool, error) {
 	candidates := []string{
 		filepath.Join(home, ".codex", "skills", short),
 		filepath.Join(home, ".codex", "prompts", short+".md"),
+		filepath.Join(home, ".codex", "plugins", "cache", short),
 	}
 	for _, p := range candidates {
 		if _, err := os.Stat(p); err == nil {
@@ -169,7 +198,7 @@ func (a *CodexAdapter) IsInstalled(name string) (bool, error) {
 	}
 	cfgPath, _ := a.configPath(ScopeUser)
 	raw := make(map[string]interface{})
-	if data, err := os.ReadFile(cfgPath); err == nil {
+	if data, err := os.ReadFile(cfgPath); err == nil { // #nosec G304 -- cfgPath is under ~/.codex, not user-supplied
 		_ = toml.Unmarshal(data, &raw)
 		if servers, ok := raw["mcp_servers"].(map[string]interface{}); ok {
 			if _, ok := servers[short]; ok {
@@ -190,6 +219,7 @@ func (a *CodexAdapter) Remove(name string, scope Scope) error {
 	candidates := []string{
 		filepath.Join(base, "skills", short),
 		filepath.Join(base, "prompts", short+".md"),
+		filepath.Join(base, "plugins", "cache", short),
 	}
 	if scope == ScopeProject {
 		cwd, _ := os.Getwd()
@@ -206,7 +236,7 @@ func (a *CodexAdapter) Remove(name string, scope Scope) error {
 	// Remove from config.toml
 	cfgPath, _ := a.configPath(scope)
 	raw := make(map[string]interface{})
-	if data, err := os.ReadFile(cfgPath); err == nil {
+	if data, err := os.ReadFile(cfgPath); err == nil { // #nosec G304 -- cfgPath is under ~/.codex, not user-supplied
 		_ = toml.Unmarshal(data, &raw)
 		if servers, ok := raw["mcp_servers"].(map[string]interface{}); ok {
 			if _, ok := servers[short]; ok {
@@ -214,8 +244,9 @@ func (a *CodexAdapter) Remove(name string, scope Scope) error {
 				raw["mcp_servers"] = servers
 				var sb strings.Builder
 				enc := toml.NewEncoder(&sb)
-				_ = enc.Encode(raw)
-				_ = os.WriteFile(cfgPath, []byte(sb.String()), 0o600)
+				if err := enc.Encode(raw); err == nil {
+					_ = writeFileAtomic(cfgPath, []byte(sb.String()), 0o600)
+				}
 				removed = true
 			}
 		}

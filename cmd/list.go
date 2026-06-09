@@ -24,7 +24,7 @@ func newListCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			data, err := os.ReadFile(dbPath)
+			data, err := os.ReadFile(dbPath) // #nosec G304 -- dbPath is ~/.agent-registry/installed.json
 			if os.IsNotExist(err) {
 				fmt.Println("No artifacts installed.")
 				return nil
@@ -41,8 +41,9 @@ func newListCmd() *cobra.Command {
 				return nil
 			}
 			bold := func(s string) string { return "\033[1m" + s + "\033[0m" }
-			fmt.Printf("%-48s  %-14s  %-12s  %-8s  %s\n",
-				bold("NAME"), bold("TYPE"), bold("AGENT"), bold("SCOPE"), bold("VERSION"))
+			// Pad before bolding so ANSI escapes don't skew column widths.
+			fmt.Println(bold(fmt.Sprintf("%-48s  %-14s  %-12s  %-8s  %s",
+				"NAME", "TYPE", "AGENT", "SCOPE", "VERSION")))
 			fmt.Println(strings.Repeat("─", 100))
 			count := 0
 			for _, e := range db.Entries {

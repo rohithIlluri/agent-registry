@@ -30,6 +30,9 @@ type Adapter interface {
 
 	// InstallPath returns the directory where the artifact would be installed.
 	InstallPath(artType registry.ArtifactType, scope Scope) (string, error)
+
+	// SupportedTypes lists the artifact types this agent can install.
+	SupportedTypes() []registry.ArtifactType
 }
 
 // All returns every adapter, in preference order.

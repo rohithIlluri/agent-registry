@@ -62,22 +62,15 @@ func printSearchResults(results []registry.IndexEntry) {
 	}
 	reset := "\033[0m"
 
-	fmt.Printf("%-50s  %-14s  %-10s  %s\n",
-		bold("NAME"), bold("TYPE"), bold("TRUST"), bold("DESCRIPTION"))
+	// Pad cells before colorizing: ANSI escapes count toward %-Ns width and
+	// would misalign columns otherwise.
+	fmt.Println(bold(fmt.Sprintf("%-50s  %-14s  %-10s  %s", "NAME", "TYPE", "TRUST", "DESCRIPTION")))
 	fmt.Println(strings.Repeat("─", 110))
 
 	for _, e := range results {
-		trust := string(e.Trust)
+		trust := fmt.Sprintf("%-10s", string(e.Trust))
 		if c, ok := trustColor[e.Trust]; ok {
 			trust = c + trust + reset
-		}
-		desc := e.Description
-		if len(desc) > 60 {
-			desc = desc[:57] + "…"
-		}
-		name := e.Name
-		if len(name) > 48 {
-			name = name[:45] + "…"
 		}
 		flags := ""
 		if e.HasMCP {
@@ -89,8 +82,9 @@ func printSearchResults(results []registry.IndexEntry) {
 		if e.HasHooks {
 			flags += " [hooks]"
 		}
-		fmt.Printf("%-50s  %-14s  %-10s  %s%s\n",
-			bold(name), string(e.Type), trust, desc, dim(flags))
+		name := bold(fmt.Sprintf("%-50s", truncate(e.Name, 48)))
+		fmt.Printf("%s  %-14s  %s  %s%s\n",
+			name, string(e.Type), trust, truncate(e.Description, 60), dim(flags))
 	}
 	fmt.Printf("\n%d artifact(s) found.\n", len(results))
 }

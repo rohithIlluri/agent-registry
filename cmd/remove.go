@@ -49,10 +49,26 @@ func newRemoveCmd() *cobra.Command {
 				}
 			}
 
+			// Narrow the prompt to agents where the artifact is actually
+			// present. IsInstalled probes user-scope paths only, so keep the
+			// full target list for project-scope removals.
+			if scope == adapter.ScopeUser {
+				var present []adapter.Adapter
+				for _, t := range targets {
+					if ok, _ := t.IsInstalled(name); ok {
+						present = append(present, t)
+					}
+				}
+				if len(present) == 0 {
+					return fmt.Errorf("%q is not installed for any agent", name)
+				}
+				targets = present
+			}
+
 			if !yes {
 				fmt.Printf("Remove %q from %s? [y/N] ", name, agentList(targets))
 				var resp string
-				fmt.Scanln(&resp)
+				_, _ = fmt.Scanln(&resp)
 				if strings.ToLower(strings.TrimSpace(resp)) != "y" {
 					return fmt.Errorf("cancelled")
 				}
@@ -97,7 +113,7 @@ func removeFromDB(name string, targets []adapter.Adapter) error {
 	if err != nil {
 		return err
 	}
-	data, err := os.ReadFile(dbPath)
+	data, err := os.ReadFile(dbPath) // #nosec G304 -- dbPath is ~/.agent-registry/installed.json
 	if os.IsNotExist(err) {
 		return nil
 	}

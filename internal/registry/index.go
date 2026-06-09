@@ -14,7 +14,12 @@ const (
 	DefaultIndexURL = "https://raw.githubusercontent.com/rohithilluri/agent-registry/main/registry/index.json"
 	CacheTTL        = 24 * time.Hour
 	cacheFile       = "index.json"
+	httpTimeout     = 30 * time.Second
 )
+
+// httpClient is the shared client used for all registry requests.
+// A 30 s timeout prevents the CLI from hanging on a slow or adversarial server.
+var httpClient = &http.Client{Timeout: httpTimeout}
 
 // Client fetches and caches the registry index.
 type Client struct {
@@ -56,7 +61,7 @@ func (c *Client) LoadIndex() (*Index, error) {
 }
 
 func (c *Client) loadFromFile(path string) (*Index, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is a cache file or local index path, not user-supplied
 	if err != nil {
 		return nil, fmt.Errorf("read index %s: %w", path, err)
 	}
@@ -68,7 +73,7 @@ func (c *Client) loadFromFile(path string) (*Index, error) {
 }
 
 func (c *Client) fetchAndCache(dest string) (*Index, error) {
-	resp, err := http.Get(c.IndexURL) //nolint:gosec // URL is user-configurable or default
+	resp, err := httpClient.Get(c.IndexURL) // #nosec G107 -- URL is user-configurable or the default registry URL
 	if err != nil {
 		return nil, fmt.Errorf("fetch index from %s: %w", c.IndexURL, err)
 	}
@@ -80,9 +85,9 @@ func (c *Client) fetchAndCache(dest string) (*Index, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&idx); err != nil {
 		return nil, fmt.Errorf("decode index: %w", err)
 	}
-	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err == nil {
+	if err := os.MkdirAll(filepath.Dir(dest), 0o750); err == nil {
 		data, _ := json.MarshalIndent(idx, "", "  ")
-		_ = os.WriteFile(dest, data, 0o644)
+		_ = os.WriteFile(dest, data, 0o644) // #nosec G306 -- registry index cache is a public data file
 	}
 	return &idx, nil
 }
@@ -153,7 +158,7 @@ func (c *Client) LoadArtifact(name string) (*Artifact, error) {
 	}
 	baseURL := ArtifactBaseURL(c.IndexURL)
 	url := baseURL + name + ".json"
-	resp, err := http.Get(url) //nolint:gosec
+	resp, err := httpClient.Get(url) // #nosec G107 -- URL derived from the registry index URL, not raw user input
 	if err != nil {
 		return nil, fmt.Errorf("fetch artifact %s: %w", name, err)
 	}
@@ -172,7 +177,7 @@ func (c *Client) LoadArtifact(name string) (*Artifact, error) {
 }
 
 func (c *Client) loadArtifactFromFile(path string) (*Artifact, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is a local registry artifacts path, not user-supplied
 	if err != nil {
 		return nil, fmt.Errorf("read artifact %s: %w", path, err)
 	}

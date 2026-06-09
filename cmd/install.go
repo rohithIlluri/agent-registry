@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/rohithilluri/agent-registry/internal/adapter"
+	"github.com/rohithilluri/agent-registry/internal/config"
 	"github.com/rohithilluri/agent-registry/internal/installer"
 	"github.com/rohithilluri/agent-registry/internal/registry"
 	"github.com/spf13/cobra"
@@ -12,11 +13,11 @@ import (
 
 func newInstallCmd() *cobra.Command {
 	var (
-		agents      []string
-		global      bool
-		project     bool
-		yes         bool
-		localIndex  string
+		agents     []string
+		global     bool
+		project    bool
+		yes        bool
+		localIndex string
 	)
 	cmd := &cobra.Command{
 		Use:   "install <name>",
@@ -33,9 +34,21 @@ func newInstallCmd() *cobra.Command {
 				scope = adapter.ScopeProject
 			}
 
+			cfg, _ := config.Load()
 			client := registry.NewClient()
 			if localIndex != "" {
 				client.LocalPath = localIndex
+			} else if cfg != nil && cfg.IndexURL != "" {
+				client.IndexURL = cfg.IndexURL
+			}
+
+			// Merge default-agent from config if not set on command line.
+			if len(agents) == 0 && cfg != nil && cfg.DefaultAgent != "" {
+				agents = []string{cfg.DefaultAgent}
+			}
+			// Merge auto-confirm from config.
+			if !yes && cfg != nil && cfg.AutoConfirm {
+				yes = true
 			}
 
 			// Resolve full name from index (support short names).

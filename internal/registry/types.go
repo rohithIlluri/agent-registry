@@ -25,11 +25,11 @@ const (
 type SourceType string
 
 const (
-	SourceNPM            SourceType = "npm"
-	SourcePyPI           SourceType = "pypi"
-	SourceGitHubRelease  SourceType = "github-release"
-	SourceGit            SourceType = "git"
-	SourceLocal          SourceType = "local"
+	SourceNPM           SourceType = "npm"
+	SourcePyPI          SourceType = "pypi"
+	SourceGitHubRelease SourceType = "github-release"
+	SourceGit           SourceType = "git"
+	SourceLocal         SourceType = "local"
 )
 
 type Author struct {
@@ -55,6 +55,22 @@ type MCPServerConfig struct {
 	URL     string            `json:"url,omitempty"` // for streamable-HTTP transport
 }
 
+// HookCommand is a single hook action entry (always type "command" for now).
+type HookCommand struct {
+	Type    string `json:"type"`
+	Command string `json:"command"`
+}
+
+// HookMatcher pairs an optional tool-name matcher with its hook commands.
+type HookMatcher struct {
+	Matcher string        `json:"matcher,omitempty"`
+	Hooks   []HookCommand `json:"hooks"`
+}
+
+// HookDefinition maps Claude Code hook events (PreToolUse, PostToolUse,
+// Notification, Stop) to their matchers. Used inside AgentInstallConfig.
+type HookDefinition map[string][]HookMatcher
+
 // AgentInstallConfig describes how to install an artifact for a specific agent.
 type AgentInstallConfig struct {
 	// MCP servers
@@ -67,10 +83,29 @@ type AgentInstallConfig struct {
 	// Inline body for slash-commands or subagents
 	CommandBody string `json:"commandBody,omitempty"`
 	AgentBody   string `json:"agentBody,omitempty"`
+
+	// Hooks to register (Claude Code only for now)
+	Hooks HookDefinition `json:"hooks,omitempty"`
+
+	// Plugin bundle: path inside downloaded archive to the agent's manifest dir
+	PluginManifestDir string `json:"pluginManifestDir,omitempty"`
 }
 
 // InstallConfig maps agent name → install spec; the key "any" means all agents.
 type InstallConfig map[string]AgentInstallConfig
+
+// InstallFor resolves the install config for an agent, trying each given key
+// in order and finally falling back to "any". The second return is false when
+// no key matched.
+func (a *Artifact) InstallFor(agents ...string) (AgentInstallConfig, bool) {
+	for _, name := range agents {
+		if cfg, ok := a.Install[name]; ok {
+			return cfg, true
+		}
+	}
+	cfg, ok := a.Install["any"]
+	return cfg, ok
+}
 
 // Artifact is the full manifest stored per-artifact in registry/artifacts/.
 type Artifact struct {
@@ -122,12 +157,12 @@ type Index struct {
 
 // InstalledEntry records a locally installed artifact.
 type InstalledEntry struct {
-	Name      string `json:"name"`
-	Type      string `json:"type"`
-	Version   string `json:"version"`
-	Agent     string `json:"agent"`
-	Scope     string `json:"scope"` // "user" | "project"
-	Path      string `json:"path"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Version     string `json:"version"`
+	Agent       string `json:"agent"`
+	Scope       string `json:"scope"` // "user" | "project"
+	Path        string `json:"path"`
 	InstalledAt string `json:"installedAt"`
 }
 

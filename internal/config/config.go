@@ -9,9 +9,9 @@ import (
 
 // Config holds persistent CLI configuration.
 type Config struct {
-	IndexURL    string `json:"indexURL,omitempty"`    // override default registry URL
+	IndexURL     string `json:"indexURL,omitempty"`     // override default registry URL
 	DefaultAgent string `json:"defaultAgent,omitempty"` // "claude-code" | "codex"
-	AutoConfirm bool   `json:"autoConfirm,omitempty"` // skip install confirmation
+	AutoConfirm  bool   `json:"autoConfirm,omitempty"`  // skip install confirmation
 }
 
 // dir returns the config directory, creating it if absent.
@@ -38,7 +38,7 @@ func Load() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is ~/.agent-registry/config.json, not user-supplied
 	if os.IsNotExist(err) {
 		return &Config{}, nil
 	}

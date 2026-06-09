@@ -1,0 +1,106 @@
+# Run locally before every commit.
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # ── Secrets & credentials ────────────────────────────────────────────────
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
+
+  # ── General file hygiene ─────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-added-large-files
+        args: ['--maxkb=5120']        # reject files > 5 MB
+      - id: check-case-conflict
+      - id: check-json
+        files: \.(json)$
+      - id: check-yaml
+        files: \.(yml|yaml)$
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: detect-private-key          # catch PEM/RSA keys
+      - id: no-commit-to-branch
+        args: ['--branch', 'main', '--branch', 'master']
+
+  # ── Go ───────────────────────────────────────────────────────────────────
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+      - id: go-vet
+      - id: go-build
+      - id: go-mod-tidy
+
+  # ── Shell scripts ────────────────────────────────────────────────────────
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        files: \.(sh)$
+
+  # ── Registry manifest validation ─────────────────────────────────────────
+  - repo: local
+    hooks:
+      - id: validate-registry-index
+        name: Validate registry/index.json
+        language: python
+        entry: python3
+        args:
+          - -c
+          - |
+            import json, sys
+            REQUIRED = {"name","type","version","description","category","agentCompat","trust"}
+            VALID_TYPES = {"mcp-server","skill","subagent","slash-command","hook","plugin-bundle"}
+            VALID_TRUST = {"community","verified","curated"}
+            with open("registry/index.json") as f:
+                idx = json.load(f)
+            errors = []
+            names = set()
+            for e in idx.get("artifacts", []):
+                missing = REQUIRED - set(e.keys())
+                if missing: errors.append(f"{e.get('name','?')}: missing {missing}")
+                if e.get("type") not in VALID_TYPES: errors.append(f"{e.get('name')}: bad type")
+                if e.get("trust") not in VALID_TRUST: errors.append(f"{e.get('name')}: bad trust")
+                if e["name"] in names: errors.append(f"duplicate: {e['name']}")
+                names.add(e["name"])
+            if errors:
+                [print(e) for e in errors]; sys.exit(1)
+            print(f"OK ({len(idx['artifacts'])} artifacts)")
+        pass_filenames: false
+        files: registry/index\.json
+
+      - id: validate-skillmd
+        name: Validate SKILL.md frontmatter
+        language: python
+        entry: python3
+        args:
+          - -c
+          - |
+            import sys
+            errors = []
+            for path in sys.argv[1:]:
+                content = open(path).read()
+                if not content.startswith("---"):
+                    errors.append(f"{path}: missing frontmatter")
+                    continue
+                end = content.find("---", 3)
+                if end < 0:
+                    errors.append(f"{path}: unclosed frontmatter")
+                    continue
+                fm = content[3:end]
+                if "name:" not in fm: errors.append(f"{path}: missing 'name'")
+                if "description:" not in fm: errors.append(f"{path}: missing 'description'")
+            if errors:
+                [print(e) for e in errors]; sys.exit(1)
+        files: SKILL\.md$

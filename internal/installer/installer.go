@@ -19,6 +19,9 @@ import (
 	"github.com/rohithilluri/agent-registry/internal/security"
 )
 
+// downloadClient has a generous timeout for artifact payloads (larger files).
+var downloadClient = &http.Client{Timeout: 5 * time.Minute}
+
 // Options controls install behaviour.
 type Options struct {
 	Agents      []string      // target agents; empty = auto-detect
@@ -66,7 +69,7 @@ func Install(art *registry.Artifact, opts Options) error {
 	if !opts.AutoConfirm {
 		fmt.Fprintf(w, "\nInstall %q for %s? [y/N] ", art.Name, agentNames(targets))
 		var resp string
-		fmt.Scanln(&resp)
+		_, _ = fmt.Scanln(&resp)
 		if strings.ToLower(strings.TrimSpace(resp)) != "y" {
 			return fmt.Errorf("install cancelled")
 		}
@@ -80,8 +83,10 @@ func Install(art *registry.Artifact, opts Options) error {
 	defer cleanup()
 
 	// 5. Verify checksum.
-	if payload != "" && art.Checksum != "" {
-		if fi, err := os.Stat(payload); err == nil && !fi.IsDir() {
+	if payload != "" {
+		if art.Checksum == "" {
+			fmt.Fprintln(w, "⚠ No checksum recorded for this artifact — skipping verification.")
+		} else {
 			if err := security.Verify(payload, art.Checksum); err != nil {
 				return fmt.Errorf("checksum verification failed: %w", err)
 			}
@@ -151,6 +156,8 @@ func printPostInstall(w io.Writer, art *registry.Artifact, targets []adapter.Ada
 				fmt.Fprintln(w, "→ Claude Code: skill ready — invoke with /skill-name in Claude Code.")
 			case registry.TypeSlashCommand:
 				fmt.Fprintf(w, "→ Claude Code: slash command /%s available immediately.\n", shortName(art.Name))
+			case registry.TypeSubagent:
+				fmt.Fprintf(w, "→ Claude Code: subagent %q ready — Claude delegates to it automatically.\n", shortName(art.Name))
 			}
 		case "codex":
 			switch art.Type {
@@ -189,8 +196,38 @@ func agentNames(adapters []adapter.Adapter) string {
 
 // fetchPayload downloads the artifact payload and returns a local path plus cleanup func.
 // For MCP servers that only need registration (no file download), returns "", noop, nil.
+//
+// When the install config declares a skillSource (tarball URL) it takes
+// precedence over art.Source, and skillPath is resolved inside the unpacked
+// payload so adapters receive the artifact directory itself — never the
+// surrounding repository.
 func fetchPayload(art *registry.Artifact) (string, func(), error) {
 	noop := func() {}
+
+	// skillSource conventionally lives under "any", but accept it from any
+	// agent-specific entry as the payload is shared across targets.
+	cfg, _ := art.InstallFor()
+	if cfg.SkillSource == "" {
+		for _, c := range art.Install {
+			if c.SkillSource != "" {
+				cfg = c
+				break
+			}
+		}
+	}
+	if cfg.SkillSource != "" {
+		dir, cleanup, err := downloadTo(cfg.SkillSource)
+		if err != nil {
+			return "", nil, err
+		}
+		resolved, err := resolveSubPath(dir, cfg.SkillPath)
+		if err != nil {
+			cleanup()
+			return "", nil, err
+		}
+		return resolved, cleanup, nil
+	}
+
 	src := art.Source
 	switch src.Type {
 	case registry.SourceNPM, registry.SourcePyPI:
@@ -200,21 +237,76 @@ func fetchPayload(art *registry.Artifact) (string, func(), error) {
 		if src.URL == "" {
 			return "", noop, nil
 		}
-		return downloadTo(src.URL)
+		dir, cleanup, err := downloadTo(src.URL)
+		if err != nil {
+			return "", nil, err
+		}
+		resolved, err := resolveSubPath(dir, cfg.SkillPath)
+		if err != nil {
+			cleanup()
+			return "", nil, err
+		}
+		return resolved, cleanup, nil
 	case registry.SourceGit:
 		if src.Repo == "" && src.URL == "" {
 			return "", noop, nil
 		}
-		return cloneRepo(src)
+		dir, cleanup, err := cloneRepo(src)
+		if err != nil {
+			return "", nil, err
+		}
+		resolved, err := resolveSubPath(dir, cfg.SkillPath)
+		if err != nil {
+			cleanup()
+			return "", nil, err
+		}
+		return resolved, cleanup, nil
 	case registry.SourceLocal:
-		return src.URL, noop, nil
+		resolved, err := resolveSubPath(src.URL, cfg.SkillPath)
+		if err != nil {
+			return "", nil, err
+		}
+		return resolved, noop, nil
 	default:
 		return "", noop, nil
 	}
 }
 
+// resolveSubPath locates sub inside root. GitHub archive tarballs wrap their
+// contents in a single "<repo>-<ref>/" directory, so if sub is not found at
+// the top level and root contains exactly one directory, the search descends
+// into it before giving up.
+func resolveSubPath(root, sub string) (string, error) {
+	if root == "" || sub == "" {
+		return descendSingleDir(root), nil
+	}
+	for _, base := range []string{root, descendSingleDir(root)} {
+		candidate := filepath.Join(base, filepath.FromSlash(sub))
+		if !strings.HasPrefix(filepath.Clean(candidate), filepath.Clean(base)+string(os.PathSeparator)) {
+			return "", fmt.Errorf("skillPath %q escapes the payload directory", sub)
+		}
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("skillPath %q not found in payload %s", sub, root)
+}
+
+// descendSingleDir returns root's lone subdirectory when the payload is a
+// wrapper dir (as produced by GitHub archive tarballs); otherwise root.
+func descendSingleDir(root string) string {
+	if root == "" {
+		return root
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil || len(entries) != 1 || !entries[0].IsDir() {
+		return root
+	}
+	return filepath.Join(root, entries[0].Name())
+}
+
 func downloadTo(url string) (string, func(), error) {
-	resp, err := http.Get(url) //nolint:gosec
+	resp, err := downloadClient.Get(url) // #nosec G107 -- URL comes from artifact source field, not raw user input
 	if err != nil {
 		return "", nil, err
 	}
@@ -244,7 +336,9 @@ func downloadTo(url string) (string, func(), error) {
 		return "", nil, err
 	}
 	_, err = io.Copy(f, resp.Body)
-	f.Close()
+	if cerr := f.Close(); cerr != nil && err == nil {
+		err = cerr
+	}
 	if err != nil {
 		cleanup()
 		return "", nil, err
@@ -267,26 +361,28 @@ func unpackTarGz(r io.Reader, dest string) error {
 		if err != nil {
 			return err
 		}
-		target := filepath.Join(dest, hdr.Name)
+		target := filepath.Join(dest, hdr.Name) // #nosec G305 -- path traversal guard immediately below
 		// Guard against path traversal.
 		if !strings.HasPrefix(filepath.Clean(target), filepath.Clean(dest)+string(os.PathSeparator)) {
 			return fmt.Errorf("tar path traversal detected: %s", hdr.Name)
 		}
 		switch hdr.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0o755); err != nil {
+			if err := os.MkdirAll(target, 0o755); err != nil { // #nosec G301 -- target is inside a temp dir for artifact extraction
 				return err
 			}
 		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil { // #nosec G301 -- target is inside a temp dir for artifact extraction
 				return err
 			}
 			f, err := os.Create(target)
 			if err != nil {
 				return err
 			}
-			_, err = io.Copy(f, tr)
-			f.Close()
+			_, err = io.Copy(f, tr) // #nosec G110 -- size validated by checksum; artifact from trusted registry
+			if cerr := f.Close(); cerr != nil && err == nil {
+				err = cerr
+			}
 			if err != nil {
 				return err
 			}
@@ -310,7 +406,7 @@ func cloneRepo(src registry.Source) (string, func(), error) {
 		args = append(args, "--branch", src.Version)
 	}
 	args = append(args, repoURL, tmp)
-	cmd := exec.Command("git", args...) //nolint:gosec
+	cmd := exec.Command("git", args...) // #nosec G204 -- git is required for source:git artifact downloads
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		cleanup()
@@ -325,7 +421,7 @@ func recordInstall(art *registry.Artifact, targets []adapter.Adapter, scope adap
 		return err
 	}
 	var db registry.InstalledDB
-	if data, err := os.ReadFile(dbPath); err == nil {
+	if data, err := os.ReadFile(dbPath); err == nil { // #nosec G304 -- dbPath is ~/.agent-registry/installed.json
 		_ = json.Unmarshal(data, &db)
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
