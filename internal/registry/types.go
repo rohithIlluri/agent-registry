@@ -94,6 +94,19 @@ type AgentInstallConfig struct {
 // InstallConfig maps agent name → install spec; the key "any" means all agents.
 type InstallConfig map[string]AgentInstallConfig
 
+// InstallFor resolves the install config for an agent, trying each given key
+// in order and finally falling back to "any". The second return is false when
+// no key matched.
+func (a *Artifact) InstallFor(agents ...string) (AgentInstallConfig, bool) {
+	for _, name := range agents {
+		if cfg, ok := a.Install[name]; ok {
+			return cfg, true
+		}
+	}
+	cfg, ok := a.Install["any"]
+	return cfg, ok
+}
+
 // Artifact is the full manifest stored per-artifact in registry/artifacts/.
 type Artifact struct {
 	Name        string       `json:"name"`

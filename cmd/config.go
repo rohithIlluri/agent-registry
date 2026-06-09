@@ -3,7 +3,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/rohithilluri/agent-registry/internal/config"
@@ -133,13 +132,4 @@ func setField(cfg *config.Config, key, val string) error {
 		return fmt.Errorf("unknown config key %q; valid keys: index-url, default-agent, auto-confirm", key)
 	}
 	return nil
-}
-
-// configPath is exported so the path command can show users where the file lives.
-func configFilePath() (string, error) {
-	path, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return path + "/.agent-registry/config.json", nil
 }

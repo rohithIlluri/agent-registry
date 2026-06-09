@@ -49,6 +49,22 @@ func newRemoveCmd() *cobra.Command {
 				}
 			}
 
+			// Narrow the prompt to agents where the artifact is actually
+			// present. IsInstalled probes user-scope paths only, so keep the
+			// full target list for project-scope removals.
+			if scope == adapter.ScopeUser {
+				var present []adapter.Adapter
+				for _, t := range targets {
+					if ok, _ := t.IsInstalled(name); ok {
+						present = append(present, t)
+					}
+				}
+				if len(present) == 0 {
+					return fmt.Errorf("%q is not installed for any agent", name)
+				}
+				targets = present
+			}
+
 			if !yes {
 				fmt.Printf("Remove %q from %s? [y/N] ", name, agentList(targets))
 				var resp string

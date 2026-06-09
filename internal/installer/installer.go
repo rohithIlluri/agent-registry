@@ -83,8 +83,10 @@ func Install(art *registry.Artifact, opts Options) error {
 	defer cleanup()
 
 	// 5. Verify checksum.
-	if payload != "" && art.Checksum != "" {
-		if fi, err := os.Stat(payload); err == nil && !fi.IsDir() {
+	if payload != "" {
+		if art.Checksum == "" {
+			fmt.Fprintln(w, "⚠ No checksum recorded for this artifact — skipping verification.")
+		} else {
 			if err := security.Verify(payload, art.Checksum); err != nil {
 				return fmt.Errorf("checksum verification failed: %w", err)
 			}
@@ -154,6 +156,8 @@ func printPostInstall(w io.Writer, art *registry.Artifact, targets []adapter.Ada
 				fmt.Fprintln(w, "→ Claude Code: skill ready — invoke with /skill-name in Claude Code.")
 			case registry.TypeSlashCommand:
 				fmt.Fprintf(w, "→ Claude Code: slash command /%s available immediately.\n", shortName(art.Name))
+			case registry.TypeSubagent:
+				fmt.Fprintf(w, "→ Claude Code: subagent %q ready — Claude delegates to it automatically.\n", shortName(art.Name))
 			}
 		case "codex":
 			switch art.Type {
@@ -192,8 +196,38 @@ func agentNames(adapters []adapter.Adapter) string {
 
 // fetchPayload downloads the artifact payload and returns a local path plus cleanup func.
 // For MCP servers that only need registration (no file download), returns "", noop, nil.
+//
+// When the install config declares a skillSource (tarball URL) it takes
+// precedence over art.Source, and skillPath is resolved inside the unpacked
+// payload so adapters receive the artifact directory itself — never the
+// surrounding repository.
 func fetchPayload(art *registry.Artifact) (string, func(), error) {
 	noop := func() {}
+
+	// skillSource conventionally lives under "any", but accept it from any
+	// agent-specific entry as the payload is shared across targets.
+	cfg, _ := art.InstallFor()
+	if cfg.SkillSource == "" {
+		for _, c := range art.Install {
+			if c.SkillSource != "" {
+				cfg = c
+				break
+			}
+		}
+	}
+	if cfg.SkillSource != "" {
+		dir, cleanup, err := downloadTo(cfg.SkillSource)
+		if err != nil {
+			return "", nil, err
+		}
+		resolved, err := resolveSubPath(dir, cfg.SkillPath)
+		if err != nil {
+			cleanup()
+			return "", nil, err
+		}
+		return resolved, cleanup, nil
+	}
+
 	src := art.Source
 	switch src.Type {
 	case registry.SourceNPM, registry.SourcePyPI:
@@ -203,17 +237,72 @@ func fetchPayload(art *registry.Artifact) (string, func(), error) {
 		if src.URL == "" {
 			return "", noop, nil
 		}
-		return downloadTo(src.URL)
+		dir, cleanup, err := downloadTo(src.URL)
+		if err != nil {
+			return "", nil, err
+		}
+		resolved, err := resolveSubPath(dir, cfg.SkillPath)
+		if err != nil {
+			cleanup()
+			return "", nil, err
+		}
+		return resolved, cleanup, nil
 	case registry.SourceGit:
 		if src.Repo == "" && src.URL == "" {
 			return "", noop, nil
 		}
-		return cloneRepo(src)
+		dir, cleanup, err := cloneRepo(src)
+		if err != nil {
+			return "", nil, err
+		}
+		resolved, err := resolveSubPath(dir, cfg.SkillPath)
+		if err != nil {
+			cleanup()
+			return "", nil, err
+		}
+		return resolved, cleanup, nil
 	case registry.SourceLocal:
-		return src.URL, noop, nil
+		resolved, err := resolveSubPath(src.URL, cfg.SkillPath)
+		if err != nil {
+			return "", nil, err
+		}
+		return resolved, noop, nil
 	default:
 		return "", noop, nil
 	}
+}
+
+// resolveSubPath locates sub inside root. GitHub archive tarballs wrap their
+// contents in a single "<repo>-<ref>/" directory, so if sub is not found at
+// the top level and root contains exactly one directory, the search descends
+// into it before giving up.
+func resolveSubPath(root, sub string) (string, error) {
+	if root == "" || sub == "" {
+		return descendSingleDir(root), nil
+	}
+	for _, base := range []string{root, descendSingleDir(root)} {
+		candidate := filepath.Join(base, filepath.FromSlash(sub))
+		if !strings.HasPrefix(filepath.Clean(candidate), filepath.Clean(base)+string(os.PathSeparator)) {
+			return "", fmt.Errorf("skillPath %q escapes the payload directory", sub)
+		}
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("skillPath %q not found in payload %s", sub, root)
+}
+
+// descendSingleDir returns root's lone subdirectory when the payload is a
+// wrapper dir (as produced by GitHub archive tarballs); otherwise root.
+func descendSingleDir(root string) string {
+	if root == "" {
+		return root
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil || len(entries) != 1 || !entries[0].IsDir() {
+		return root
+	}
+	return filepath.Join(root, entries[0].Name())
 }
 
 func downloadTo(url string) (string, func(), error) {

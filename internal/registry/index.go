@@ -85,7 +85,7 @@ func (c *Client) fetchAndCache(dest string) (*Index, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&idx); err != nil {
 		return nil, fmt.Errorf("decode index: %w", err)
 	}
-	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err == nil { // #nosec G301 -- cache dir under ~/.cache
+	if err := os.MkdirAll(filepath.Dir(dest), 0o750); err == nil {
 		data, _ := json.MarshalIndent(idx, "", "  ")
 		_ = os.WriteFile(dest, data, 0o644) // #nosec G306 -- registry index cache is a public data file
 	}

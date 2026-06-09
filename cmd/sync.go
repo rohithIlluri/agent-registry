@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/rohithilluri/agent-registry/internal/mcpregistry"
@@ -200,12 +199,4 @@ func mergeIndex(existing []registry.IndexEntry, newArts []registry.Artifact) []r
 		}
 	}
 	return result
-}
-
-func truncate(s string, max int) string {
-	s = strings.TrimSpace(s)
-	if len(s) <= max {
-		return s
-	}
-	return s[:max-1] + "…"
 }

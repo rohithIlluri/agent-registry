@@ -18,11 +18,18 @@ func shortName(name string) string {
 	return name
 }
 
-// copyDir copies src into dst, merging contents.
+// copyDir copies src into dst, merging contents. `.git` directories are
+// skipped: clone metadata is never part of an artifact.
 func copyDir(src, dst string) error {
+	if src == "" {
+		return fmt.Errorf("no payload to copy (artifact has no downloadable source)")
+	}
 	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		if d.IsDir() && d.Name() == ".git" {
+			return filepath.SkipDir
 		}
 		rel, err := filepath.Rel(src, path)
 		if err != nil {

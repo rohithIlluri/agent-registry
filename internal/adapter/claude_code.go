@@ -17,6 +17,17 @@ func NewClaudeCodeAdapter() *ClaudeCodeAdapter { return &ClaudeCodeAdapter{} }
 
 func (a *ClaudeCodeAdapter) Name() string { return "claude-code" }
 
+func (a *ClaudeCodeAdapter) SupportedTypes() []registry.ArtifactType {
+	return []registry.ArtifactType{
+		registry.TypeSkill,
+		registry.TypeMCPServer,
+		registry.TypeSlashCommand,
+		registry.TypeSubagent,
+		registry.TypeHook,
+		registry.TypePlugin,
+	}
+}
+
 func (a *ClaudeCodeAdapter) Detect() bool {
 	// Check for the ~/.claude directory or the `claude` binary on PATH.
 	home, _ := os.UserHomeDir()
@@ -86,10 +97,7 @@ func (a *ClaudeCodeAdapter) installSkill(art *registry.Artifact, payload string,
 
 // installMCP writes a server entry into .mcp.json (project) or ~/.claude/settings.json (user).
 func (a *ClaudeCodeAdapter) installMCP(art *registry.Artifact, scope Scope) error {
-	cfg, ok := art.Install["claude-code"]
-	if !ok {
-		cfg, ok = art.Install["any"]
-	}
+	cfg, ok := art.InstallFor(a.Name())
 	if !ok || cfg.MCPServer == nil {
 		return fmt.Errorf("artifact %q has no claude-code MCP install config", art.Name)
 	}
@@ -163,16 +171,17 @@ func (a *ClaudeCodeAdapter) installCommand(art *registry.Artifact, payload strin
 		return err
 	}
 	// payload is the .md file, or we use the inline body
-	cfg := art.Install["claude-code"]
+	cfg, _ := art.InstallFor(a.Name())
 	body := cfg.CommandBody
-	if body == "" {
-		if payload != "" {
-			data, err := os.ReadFile(payload) // #nosec G304 -- payload path from installer, not user input
-			if err != nil {
-				return err
-			}
-			body = string(data)
+	if body == "" && payload != "" {
+		data, err := os.ReadFile(payload) // #nosec G304 -- payload path from installer, not user input
+		if err != nil {
+			return err
 		}
+		body = string(data)
+	}
+	if body == "" {
+		return fmt.Errorf("artifact %q has no command body or payload to install", art.Name)
 	}
 	dest := filepath.Join(dir, shortName(art.Name)+".md")
 	return os.WriteFile(dest, []byte(body), 0o644) // #nosec G306 -- command files are read by the agent at runtime
@@ -187,7 +196,7 @@ func (a *ClaudeCodeAdapter) installSubagent(art *registry.Artifact, payload stri
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return err
 	}
-	cfg := art.Install["claude-code"]
+	cfg, _ := art.InstallFor(a.Name())
 	body := cfg.AgentBody
 	if body == "" && payload != "" {
 		data, err := os.ReadFile(payload) // #nosec G304 -- payload path from installer, not user input
@@ -196,16 +205,16 @@ func (a *ClaudeCodeAdapter) installSubagent(art *registry.Artifact, payload stri
 		}
 		body = string(data)
 	}
+	if body == "" {
+		return fmt.Errorf("artifact %q has no agent body or payload to install", art.Name)
+	}
 	dest := filepath.Join(dir, shortName(art.Name)+".md")
 	return os.WriteFile(dest, []byte(body), 0o644) // #nosec G306 -- subagent files are read by the agent at runtime
 }
 
 // installHook merges hook definitions from the artifact into ~/.claude/settings.json.
 func (a *ClaudeCodeAdapter) installHook(art *registry.Artifact, scope Scope) error {
-	cfg, ok := art.Install["claude-code"]
-	if !ok {
-		cfg, ok = art.Install["any"]
-	}
+	cfg, ok := art.InstallFor(a.Name())
 	if !ok || len(cfg.Hooks) == 0 {
 		return fmt.Errorf("artifact %q has no claude-code hook install config", art.Name)
 	}

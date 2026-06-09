@@ -18,6 +18,15 @@ func NewCodexAdapter() *CodexAdapter { return &CodexAdapter{} }
 
 func (a *CodexAdapter) Name() string { return "codex" }
 
+func (a *CodexAdapter) SupportedTypes() []registry.ArtifactType {
+	return []registry.ArtifactType{
+		registry.TypeSkill,
+		registry.TypeMCPServer,
+		registry.TypeSlashCommand,
+		registry.TypePlugin,
+	}
+}
+
 func (a *CodexAdapter) Detect() bool {
 	home, _ := os.UserHomeDir()
 	if _, err := os.Stat(filepath.Join(home, ".codex")); err == nil {
@@ -79,14 +88,10 @@ func (a *CodexAdapter) installSkill(art *registry.Artifact, payload string, scop
 }
 
 // installMCP appends an [mcp_servers.<name>] table to ~/.codex/config.toml.
+// MCP server configs are transport-level and agent-agnostic, so a claude-code
+// entry works as a fallback.
 func (a *CodexAdapter) installMCP(art *registry.Artifact, scope Scope) error {
-	cfg, ok := art.Install["codex"]
-	if !ok {
-		cfg, ok = art.Install["claude-code"]
-	}
-	if !ok {
-		cfg, ok = art.Install["any"]
-	}
+	cfg, ok := art.InstallFor(a.Name(), "claude-code")
 	if !ok || cfg.MCPServer == nil {
 		return fmt.Errorf("artifact %q has no codex MCP install config", art.Name)
 	}
@@ -144,7 +149,9 @@ func (a *CodexAdapter) installPrompt(art *registry.Artifact, payload string, sco
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return err
 	}
-	cfg := art.Install["codex"]
+	// Command bodies are plain markdown prompts, so a claude-code entry
+	// works as a fallback.
+	cfg, _ := art.InstallFor(a.Name(), "claude-code")
 	body := cfg.CommandBody
 	if body == "" && payload != "" {
 		data, err := os.ReadFile(payload) // #nosec G304 -- payload path from installer, not user input
@@ -152,6 +159,9 @@ func (a *CodexAdapter) installPrompt(art *registry.Artifact, payload string, sco
 			return err
 		}
 		body = string(data)
+	}
+	if body == "" {
+		return fmt.Errorf("artifact %q has no command body or payload to install", art.Name)
 	}
 	dest := filepath.Join(dir, shortName(art.Name)+".md")
 	return os.WriteFile(dest, []byte(body), 0o644) // #nosec G306 -- prompt files are read by the agent at runtime

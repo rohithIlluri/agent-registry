@@ -118,3 +118,91 @@ func TestSHA256Dir(t *testing.T) {
 		t.Error("SHA256Dir should change when file content changes")
 	}
 }
+
+func TestSHA256Dir_Recursive(t *testing.T) {
+	tmp := t.TempDir()
+	sub := filepath.Join(tmp, "nested")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "top.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before, err := security.SHA256Dir(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sub, "deep.txt"), []byte("y"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	after, err := security.SHA256Dir(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before == after {
+		t.Error("SHA256Dir should include files in nested directories")
+	}
+}
+
+func TestSHA256Dir_RenameChangesHash(t *testing.T) {
+	tmp := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmp, "a.txt"), []byte("same"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before, err := security.SHA256Dir(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(filepath.Join(tmp, "a.txt"), filepath.Join(tmp, "b.txt")); err != nil {
+		t.Fatal(err)
+	}
+	after, err := security.SHA256Dir(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before == after {
+		t.Error("SHA256Dir should change when a file is renamed")
+	}
+}
+
+func TestSHA256Dir_SkipsGit(t *testing.T) {
+	tmp := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmp, "a.txt"), []byte("content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before, err := security.SHA256Dir(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gitDir := filepath.Join(tmp, ".git")
+	if err := os.MkdirAll(gitDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("ref"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	after, err := security.SHA256Dir(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before != after {
+		t.Error("SHA256Dir should ignore .git directories")
+	}
+}
+
+func TestVerify_Directory(t *testing.T) {
+	tmp := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmp, "f.txt"), []byte("dir payload"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	hash, err := security.SHA256Dir(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := security.Verify(tmp, security.Format(hash)); err != nil {
+		t.Errorf("Verify on directory failed: %v", err)
+	}
+	if err := security.Verify(tmp, "sha256:deadbeef"); err == nil {
+		t.Error("Verify should fail on directory checksum mismatch")
+	}
+}

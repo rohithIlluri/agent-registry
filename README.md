@@ -88,6 +88,12 @@ agr list
 agr list --agent claude-code
 ```
 
+### Show detected agents
+
+```bash
+agr agents     # which agents are installed + where each artifact type goes
+```
+
 ### Remove
 
 ```bash
@@ -134,7 +140,7 @@ Then open a PR adding `manifest.json` to `registry/artifacts/` and an IndexEntry
 | `verified` | Namespace ownership verified (GitHub/DNS); clean scan history |
 | `community` | PR-submitted; automated schema validation + security scan |
 
-Every artifact has a recorded **sha256 checksum** verified at install time. Hooks, MCP servers, and scripted skills show explicit warnings before install.
+Artifacts with a recorded **sha256 checksum** are verified at install time — both file and directory payloads. Installs without a checksum print an explicit warning. Hooks, MCP servers, and scripted skills show explicit warnings before install.
 
 ---
 
@@ -201,17 +207,18 @@ internal/
 ├── registry/     types, index fetch/cache, search
 ├── adapter/      Adapter interface + ClaudeCodeAdapter + CodexAdapter
 ├── installer/    download → verify checksum → disclose → adapt → install
-├── security/     sha256 checksum verification
+├── mcpregistry/  sync client for the official MCP Registry (agr registry sync)
+├── security/     sha256 checksum verification (files + directories)
 └── config/       CLI config, installed DB
 ```
 
-The `Adapter` interface makes adding more agents (Cursor, Copilot, Gemini CLI, Goose) a matter of implementing six methods. Both existing adapters detect agent presence by probing `~/.claude`/`~/.codex` and the system PATH.
+The `Adapter` interface makes adding more agents (Cursor, Copilot, Gemini CLI, Goose) a matter of implementing seven methods. Both existing adapters detect agent presence by probing `~/.claude`/`~/.codex` and the system PATH.
 
 ---
 
 ## Security
 
-- **Checksums**: every indexed artifact has a `sha256:` checksum verified at install time
+- **Checksums**: recorded `sha256:` checksums are verified at install time (file and directory payloads); missing checksums produce a visible warning
 - **Disclosure**: install always prints artifact type, permissions, and executable-code warnings
 - **Confirmation**: required unless `--yes` is passed
 - **Trust tiers**: community artifacts are scanned by CI (mcp-scan) but not human-reviewed

@@ -1,16 +1,14 @@
 package cmd
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/rohithilluri/agent-registry/internal/registry"
+	"github.com/rohithilluri/agent-registry/internal/security"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -119,7 +117,10 @@ func buildFromFile(path, name, artType string) (*registry.Artifact, error) {
 	if err != nil {
 		return nil, err
 	}
-	cksum := sha256File(path)
+	cksum, err := security.SHA256File(path)
+	if err != nil {
+		return nil, fmt.Errorf("checksum %s: %w", path, err)
+	}
 	art := &registry.Artifact{
 		Name:        name,
 		Type:        registry.ArtifactType(artType),
@@ -175,7 +176,10 @@ func buildSkillManifest(dir, nameOverride string) (*registry.Artifact, error) {
 		hasScripts = true
 	}
 
-	cksum := sha256Dir(dir)
+	cksum, err := security.SHA256Dir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("checksum %s: %w", dir, err)
+	}
 	cat := fm.Category
 	if cat == "" {
 		cat = "productivity"
@@ -234,7 +238,10 @@ func buildMCPManifest(dir, nameOverride string) (*registry.Artifact, error) {
 		artName = "io.github.YOURUSER/my-mcp-server"
 	}
 
-	cksum := sha256File(srvPath)
+	cksum, err := security.SHA256File(srvPath)
+	if err != nil {
+		return nil, fmt.Errorf("checksum %s: %w", srvPath, err)
+	}
 	return &registry.Artifact{
 		Name:        artName,
 		Type:        registry.TypeMCPServer,
@@ -271,31 +278,4 @@ func parseSkillFrontmatter(content string) (*skillFrontmatter, error) {
 		return nil, err
 	}
 	return &fm, nil
-}
-
-func sha256File(path string) string {
-	f, err := os.Open(path) // #nosec G304 -- path is CLI argument from developer publishing their own artifact
-	if err != nil {
-		return "unknown"
-	}
-	defer f.Close()
-	h := sha256.New()
-	_, _ = io.Copy(h, f)
-	return hex.EncodeToString(h.Sum(nil))
-}
-
-func sha256Dir(dir string) string {
-	h := sha256.New()
-	_ = filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil
-		}
-		data, err := os.ReadFile(path) // #nosec G304 -- path is developer's own artifact directory
-		if err != nil {
-			return nil
-		}
-		h.Write(data)
-		return nil
-	})
-	return hex.EncodeToString(h.Sum(nil))
 }
